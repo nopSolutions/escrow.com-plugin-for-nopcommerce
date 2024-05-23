@@ -6,6 +6,11 @@
 public class PaymentItem
 {
     /// <summary>
+    /// A brief description of the item being transferred
+    /// </summary>
+    public string Description { get; set; }
+
+    /// <summary>
     /// Additional attributes relevant to an item
     /// </summary>
     public ExtraAttributes ExtraAttributes { get; set; }
@@ -35,7 +40,7 @@ public class PaymentItem
     /// <summary>
     /// The way that we represent monetary amounts
     /// </summary>
-    public PaymentItemSchedule Schedule { get; set; }
+    public PaymentItemSchedule[] Schedule { get; set; }
 
     /// <summary>
     /// The way that we represent fees - the amount, type of fee, and who pays the fee

@@ -18,5 +18,5 @@ public class PaymentResponse
     /// <summary>
     /// The identifier of the transaction that was created by the call to the Escrow Pay API. This is provided so that subsequent calls may be made to the standard Escrow API
     /// </summary>
-    public string TransactionId { get; set; }
+    public int TransactionId { get; set; }
 }

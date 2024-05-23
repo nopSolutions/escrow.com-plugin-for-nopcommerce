@@ -92,13 +92,14 @@ public class EscrowService
             paymentItems.Add(new()
             {
                 Title = product.Name,
+                Description = product.ShortDescription,
                 Quantity = item.Quantity,
                 Type = PaymentItemType.GeneralMerchandise,
-                Schedule = new()
+                Schedule = [new()
                 {
                     Amount = item.UnitPriceInclTax,
                     PayerCustomer = buyer.Email
-                },
+                }],
                 Fees = GetFees(buyer)
             });
         }
@@ -106,6 +107,7 @@ public class EscrowService
         //prepare request parameters
         var requestString = JsonSerializer.Serialize(new PaymentRequest
         {
+            Description = $"Escrow Transaction for Order #{order.OrderGuid}",
             ReturnUrl = "https://localhost:5001",
             Items = paymentItems.ToArray(),
             Parties = new[]
@@ -145,7 +147,7 @@ public class EscrowService
 
         //return result
         using var responseStream = await httpResponse.Content.ReadAsStreamAsync();
-        var result = await JsonSerializer.DeserializeAsync<PaymentResponse>(responseStream);
+        var result = await JsonSerializer.DeserializeAsync<PaymentResponse>(responseStream, _serializerOptions);
 
         return result.LandingPage;
     }
