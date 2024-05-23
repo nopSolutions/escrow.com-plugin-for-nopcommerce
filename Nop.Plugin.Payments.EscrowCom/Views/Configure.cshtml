@@ -1,0 +1,95 @@
+﻿@model ConfigurationModel
+
+@{
+    Layout = "_ConfigurePlugin";
+}
+
+<form asp-controller="EscrowPayment" asp-action="Configure" method="post">
+    <div class="cards-group">
+        <div class="card card-default">
+            <div class="card-body">
+                <p>
+                    To configure the 2checkout plugin for nopCommerce.<br />
+                    <br />
+                    1. Create an account or log in to any of the <a href="https://www.escrow-sandbox.com/" target="_blank">Sandbox</a> or <a href="https://www.escrow.com" target="_blank">Production</a> websites.<br />
+                    2. Find, copy and paste your Email Address below in the Email field.<br />
+                    3. On the main menu select "Account" then "Site Management".<br />
+                    4. Generate a new API Key and paste it into the API key field below.<br />
+                    5. Save the configuration.<br />
+                </p>
+                <p>
+                    <em>Notes:</em><br />
+                    For this plugin to work properly ensure that your primary store currency is supported by 2Checkout.<br />
+                </p>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="UseSandbox" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="UseSandbox" />
+                        <span asp-validation-for="UseSandbox"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="Email" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="Email" asp-required="true" />
+                        <span asp-validation-for="Email"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="ApiKey" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="ApiKey" asp-required="true" html-attributes="@(new { value = Model.ApiKey })" />
+                        <span asp-validation-for="ApiKey"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="Currency" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-select asp-for="Currency" asp-items="ConfigurationModel.AvailableCurrencies" />
+                        <span asp-validation-for="Currency"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="PaymentItemType" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-select asp-for="PaymentItemType" asp-items="ConfigurationModel.AvailablePaymentItemTypes" />
+                        <span asp-validation-for="PaymentItemType"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="PaymentFeeType" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-select asp-for="PaymentFeeType" asp-items="ConfigurationModel.AvailablePaymentFeeTypes" />
+                        <span asp-validation-for="PaymentFeeType"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="FeePayer" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-select asp-for="FeePayer" asp-items="ConfigurationModel.AvailableFeePayers" />
+                        <span asp-validation-for="FeePayer"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-9 col-md-offset-3">
+                        <input type="submit" name="save" class="btn bg-blue" value="@T("Admin.Common.Save")" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>

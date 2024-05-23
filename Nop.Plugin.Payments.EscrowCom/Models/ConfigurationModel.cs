@@ -1,0 +1,45 @@
+﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Nop.Plugin.Payments.EscrowCom.Domain;
+using Nop.Services;
+using Nop.Web.Framework.Models;
+using Nop.Web.Framework.Mvc;
+using Nop.Web.Framework.Mvc.ModelBinding;
+
+namespace Nop.Plugin.Payments.EscrowCom.Models;
+
+/// <summary>
+/// Represents configuration model
+/// </summary>
+public record ConfigurationModel : BaseNopModel
+{
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.ApiKey")]
+    [NoTrim]
+    [DataType(DataType.Password)]
+    public string ApiKey { get; set; }
+
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.Email")]
+    public string Email { get; set; }
+
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.UseSandbox")]
+    public bool UseSandbox { get; set; }
+
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.Currency")]
+    public PaymentCurrency Currency { get; set; } = PaymentCurrency.USD;
+    public static List<SelectListItem> AvailableCurrencies => PaymentCurrency.USD.ToSelectListAsync().Result?.ToList() ?? new();
+
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.InspectionPeriod")]
+    public int InspectionPeriod { get; set; }
+
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.PaymentItemType")]
+    public PaymentItemType PaymentItemType { get; set; }
+    public static List<SelectListItem> AvailablePaymentItemTypes => PaymentItemType.BrokerFee.ToSelectListAsync().Result?.ToList() ?? new();
+
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.PaymentItemType")]
+    public PaymentFeeType PaymentFeeType { get; set; }
+    public static List<SelectListItem> AvailablePaymentFeeTypes => PaymentFeeType.Escrow.ToSelectListAsync().Result?.ToList() ?? new();
+
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.FeePayer")]
+    public FeePayer FeePayer { get; set; }
+    public static List<SelectListItem> AvailableFeePayers => FeePayer.Buyer.ToSelectListAsync().Result?.ToList() ?? new();
+}
