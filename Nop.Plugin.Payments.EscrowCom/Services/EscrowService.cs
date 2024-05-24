@@ -8,6 +8,7 @@ using Nop.Core.Domain.Orders;
 using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
+using Nop.Services.Logging;
 using Nop.Services.Orders;
 
 namespace Nop.Plugin.Payments.EscrowCom.Services;
@@ -28,6 +29,7 @@ public class EscrowService
     };
 
     private readonly ICustomerService _customerService;
+    private readonly ILogger _logger;
     private readonly IOrderService _orderService;
     private readonly IProductService _productService;
 
@@ -35,11 +37,18 @@ public class EscrowService
 
     #region Ctor
 
-    public EscrowService(HttpClient httpClient, EscrowSettings escrowComSettings, ICustomerService customerService, IOrderService orderService, IProductService productService)
+    public EscrowService(
+        HttpClient httpClient,
+        EscrowSettings escrowComSettings,
+        ICustomerService customerService,
+        ILogger logger,
+        IOrderService orderService,
+        IProductService productService)
     {
         _httpClient = httpClient;
         _escrowComSettings = escrowComSettings;
         _customerService = customerService;
+        _logger = logger;
         _orderService = orderService;
         _productService = productService;
     }
@@ -77,7 +86,7 @@ public class EscrowService
     /// </summary>
     /// <param name="order">An order</param>
     /// <returns>The URL to which the buyer will be redirected</returns>
-    public async Task<string> CreateTransactionAsync(Order order)
+    public async Task<string> CreateTransactionAsync(Order order, string returnUrl)
     {
         //products
         var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
@@ -108,7 +117,7 @@ public class EscrowService
         var requestString = JsonSerializer.Serialize(new PaymentRequest
         {
             Description = $"Escrow Transaction for Order #{order.OrderGuid}",
-            ReturnUrl = "https://localhost:5001",
+            ReturnUrl = returnUrl,
             Items = paymentItems.ToArray(),
             Parties = new[]
             {
@@ -143,7 +152,16 @@ public class EscrowService
             new MediaTypeWithQualityHeaderValue(MimeTypes.ApplicationJson));
 
         var httpResponse = await _httpClient.SendAsync(requestMessage);
-        httpResponse.EnsureSuccessStatusCode();
+
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            var responseContent = await httpResponse.Content.ReadAsStringAsync();
+            var exeption = new HttpRequestException(responseContent, null, httpResponse.StatusCode);
+
+            await _logger.ErrorAsync($"Escrow.com plugin: {httpResponse.ReasonPhrase}", exeption);
+
+            return string.Empty;
+        }
 
         //return result
         using var responseStream = await httpResponse.Content.ReadAsStreamAsync();

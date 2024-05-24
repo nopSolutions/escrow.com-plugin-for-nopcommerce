@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
+using Nop.Core;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Plugin.Payments.EscrowCom.Components;
@@ -27,6 +28,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
     private readonly ILocalizationService _localizationService;
     private readonly ISettingService _settingService;
     private readonly IUrlHelperFactory _urlHelperFactory;
+    private readonly IWebHelper _webHelper;
     private readonly PaymentSettings _paymentSettings;
 
     #endregion
@@ -40,6 +42,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
         ILocalizationService localizationService,
         ISettingService settingService,
         IUrlHelperFactory urlHelperFactory,
+        IWebHelper webHelper,
         PaymentSettings paymentSettings)
     {
         _escrowComService = escrowComService;
@@ -48,6 +51,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
         _localizationService = localizationService;
         _settingService = settingService;
         _urlHelperFactory = urlHelperFactory;
+        _webHelper = webHelper;
         _paymentSettings = paymentSettings;
     }
 
@@ -75,9 +79,22 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
     /// <returns>A task that represents the asynchronous operation</returns>
     public async Task PostProcessPaymentAsync(PostProcessPaymentRequest postProcessPaymentRequest)
     {
-        var url = await _escrowComService.CreateTransactionAsync(postProcessPaymentRequest.Order);
+        var redirectUrl = string.Empty;
+        var urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
 
-        _httpContextAccessor.HttpContext?.Response.Redirect(url);
+        if (postProcessPaymentRequest.Order != null)
+        {
+            var returnUrl = urlHelper
+                .RouteUrl(EscrowDefaults.CompletedRouteName, new { orderId = postProcessPaymentRequest.Order.Id }, _webHelper.GetCurrentRequestProtocol());
+
+            redirectUrl = await _escrowComService.CreateTransactionAsync(postProcessPaymentRequest.Order, returnUrl);
+        }
+
+        //unsuccessful attempt
+        if (string.IsNullOrEmpty(redirectUrl))
+            redirectUrl = urlHelper.RouteUrl(EscrowDefaults.FailedRouteName);
+
+        _httpContextAccessor.HttpContext?.Response.Redirect(redirectUrl);
     }
 
     /// <summary>

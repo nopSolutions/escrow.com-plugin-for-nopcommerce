@@ -16,6 +16,16 @@ public class EscrowDefaults
     public static string ConfigurationRouteName => "Plugin.Payments.EscrowCom.Configure";
 
     /// <summary>
+    /// Gets a route name to redirect after a failed API calling  
+    /// </summary>
+    public static string FailedRouteName => "Homepage";
+
+    /// <summary>
+    /// Gets a route name to redirect after successful payment in Escrow.com wizard
+    /// </summary>
+    public static string CompletedRouteName => "CheckoutCompleted";
+
+    /// <summary>
     /// Gets the webhook route name
     /// </summary>
     public static string WebhookRouteName => "Plugin.Payments.EscrowCom.Webhook";
