@@ -10,7 +10,7 @@ public class PaymentFee
     /// <summary>
     /// The type of fee being displayed
     /// </summary>
-    public PaymentFeeType Type { get; set; }
+    public PaymentFeeType Type { get; set; } = PaymentFeeType.Escrow;
 
     /// <summary>
     /// The party who will pay the fee

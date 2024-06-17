@@ -32,10 +32,10 @@ public record ConfigurationModel : BaseNopModel
     public int InspectionPeriod { get; set; }
 
     [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.PaymentItemType")]
-    public PaymentItemType PaymentItemType { get; set; }
-    public static List<SelectListItem> AvailablePaymentItemTypes => PaymentItemType.BrokerFee.ToSelectListAsync().Result?.ToList() ?? new();
+    public ItemType PaymentItemType { get; set; }
+    public static List<SelectListItem> AvailablePaymentItemTypes => ItemType.GeneralMerchandise.ToSelectListAsync().Result?.ToList() ?? new();
 
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.PaymentItemType")]
+    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.PaymentFeeType")]
     public PaymentFeeType PaymentFeeType { get; set; }
     public static List<SelectListItem> AvailablePaymentFeeTypes => PaymentFeeType.Escrow.ToSelectListAsync().Result?.ToList() ?? new();
 

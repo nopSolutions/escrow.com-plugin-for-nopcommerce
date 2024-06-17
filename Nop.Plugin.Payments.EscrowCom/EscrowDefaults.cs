@@ -31,12 +31,37 @@ public class EscrowDefaults
     public static string WebhookRouteName => "Plugin.Payments.EscrowCom.Webhook";
 
     /// <summary>
-    /// Gets the Escrow Pay API Endpoint for production environment
+    /// Gets the host URL for the production environment
     /// </summary>
-    public static string EndpointUrl => "https://api.escrow.com/integration/pay/2018-03-31";
+    public static string ApiHost => "https://api.escrow.com";
 
     /// <summary>
-    /// Gets Escrow Pay API Endpoint for sandbox environment
+    /// Gets the host URL for the sandbox environment
     /// </summary>
-    public static string SandboxEndpointUrl => "https://api.escrow-sandbox.com/integration/pay/2018-03-31";
+    public static string SandboxApiHost => "https://api.escrow-sandbox.com";
+
+    /// <summary>
+    /// Gets the Escrow Pay API Endpoint
+    /// </summary>
+    public static string PayPath => $"/integration/pay/2018-03-31";
+
+    /// <summary>
+    /// Gets the name of the generic attribute that is used to store the Escrow item type
+    /// </summary>
+    public static string EscrowItemTypeAttribute => "EscrowItemType";
+
+    /// <summary>
+    /// Gets the name of the generic attribute that is used to store specification attribute group
+    /// </summary>
+    public static string EscrowSpecificationAttributeGroupIdAttribute => "EscrowSpecificationAttributeGroup";
+
+    /// <summary>
+    /// Gets the group name for extra attributes
+    /// </summary>
+    public static string EscrowSpecificationAttributeGroupName => "Escrow extra attributes";
+
+    /// <summary>
+    /// Gets the names of Escrow extra attributes
+    /// </summary>
+    public static string[] ExtraAttributeNames => ["vin", "odometer", "year", "make", "model", "title_collection", "lien_holder_payoff", "with_content", "concierge", "dns_manager", "term_period", "image_url", "merchant_url"];
 }

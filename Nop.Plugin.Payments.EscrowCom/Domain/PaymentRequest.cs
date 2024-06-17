@@ -16,6 +16,12 @@ public class PaymentRequest
     public string Description { get; set; }
 
     /// <summary>
+    /// The external reference for the transaction you want to get the details of.
+    /// Here we will store the order number
+    /// </summary>
+    public string Reference { get; set; }
+
+    /// <summary>
     /// The redirect url that will be used after user has been redirected to the Escrow paypal success page
     /// </summary>
     public string ReturnUrl { get; set; }

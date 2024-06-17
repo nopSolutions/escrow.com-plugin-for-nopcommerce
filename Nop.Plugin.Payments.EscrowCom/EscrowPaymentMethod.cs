@@ -3,61 +3,142 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Nop.Core;
+using Nop.Core.Domain.Catalog;
+using Nop.Core.Domain.Cms;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
+using Nop.Data;
 using Nop.Plugin.Payments.EscrowCom.Components;
 using Nop.Plugin.Payments.EscrowCom.Services;
+using Nop.Services.Cms;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
 using Nop.Services.Payments;
 using Nop.Services.Plugins;
+using Nop.Web.Framework.Infrastructure;
 
 namespace Nop.Plugin.Payments.EscrowCom;
 
 /// <summary>
 /// Represents a payment method implementation
 /// </summary>
-public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
+public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
 {
     #region Fields
 
     private readonly EscrowService _escrowComService;
-
+    private readonly EscrowSettings _escrowSettings;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IActionContextAccessor _actionContextAccessor;
     private readonly ILocalizationService _localizationService;
+    private readonly IRepository<SpecificationAttribute> _specificationAttributeRepository;
+    private readonly IRepository<SpecificationAttributeGroup> _specificationAttributeGroupRepository;
+    private readonly IRepository<SpecificationAttributeOption> _specificationAttributeOptionRepository;
     private readonly ISettingService _settingService;
     private readonly IUrlHelperFactory _urlHelperFactory;
     private readonly IWebHelper _webHelper;
     private readonly PaymentSettings _paymentSettings;
+    private readonly WidgetSettings _widgetSettings;
 
     #endregion
 
     #region Ctor
 
     public EscrowPaymentMethod(
-        EscrowService escrowComService,
-        IHttpContextAccessor httpContextAccessor,
-        IActionContextAccessor actionContextAccessor,
-        ILocalizationService localizationService,
-        ISettingService settingService,
-        IUrlHelperFactory urlHelperFactory,
-        IWebHelper webHelper,
-        PaymentSettings paymentSettings)
+            EscrowService escrowComService,
+            EscrowSettings escrowSettings,
+            IHttpContextAccessor httpContextAccessor,
+            IActionContextAccessor actionContextAccessor,
+            ILocalizationService localizationService,
+            IRepository<SpecificationAttribute> specificationAttributeRepository,
+            IRepository<SpecificationAttributeGroup> specificationAttributeGroupRepository,
+            IRepository<SpecificationAttributeOption> specificationAttributeOptionRepository,
+            ISettingService settingService,
+            IUrlHelperFactory urlHelperFactory,
+            IWebHelper webHelper,
+            PaymentSettings paymentSettings,
+            WidgetSettings widgetSettings)
     {
         _escrowComService = escrowComService;
+        _escrowSettings = escrowSettings;
         _httpContextAccessor = httpContextAccessor;
         _actionContextAccessor = actionContextAccessor;
         _localizationService = localizationService;
+        _specificationAttributeRepository = specificationAttributeRepository;
+        _specificationAttributeGroupRepository = specificationAttributeGroupRepository;
+        _specificationAttributeOptionRepository = specificationAttributeOptionRepository;
         _settingService = settingService;
         _urlHelperFactory = urlHelperFactory;
         _webHelper = webHelper;
         _paymentSettings = paymentSettings;
+        _widgetSettings = widgetSettings;
+    }
+
+    #endregion
+
+    #region Utilities
+
+    private async Task<int> CreateEscrowAttributesAsync()
+    {
+        var newGroup = new SpecificationAttributeGroup() { Name = EscrowDefaults.EscrowSpecificationAttributeGroupName };
+        await _specificationAttributeGroupRepository.InsertAsync(newGroup);
+
+        foreach (var name in EscrowDefaults.ExtraAttributeNames)
+        {
+            var newSpec = new SpecificationAttribute { Name = name, SpecificationAttributeGroupId = newGroup.Id };
+            await _specificationAttributeRepository.InsertAsync(newSpec);
+
+            await _specificationAttributeOptionRepository.InsertAsync(new SpecificationAttributeOption { Name = name, SpecificationAttributeId = newSpec.Id });
+        }
+
+        return newGroup.Id;
+    }
+
+    private async Task DeleteEscrowAttributesAsync(int groupId)
+    {
+        if (groupId == 0)
+            return;
+
+        var specGroup = await _specificationAttributeGroupRepository.GetByIdAsync(groupId);
+
+        if (specGroup is null)
+            return;
+
+        await _specificationAttributeRepository.DeleteAsync(sa => sa.SpecificationAttributeGroupId == specGroup.Id);
+        await _specificationAttributeGroupRepository.DeleteAsync(specGroup);
     }
 
     #endregion
 
     #region Methods
+
+    /// <summary>
+    /// Gets widget zones where this widget should be rendered
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation
+    /// The task result contains the widget zones
+    /// </returns>
+    public Task<IList<string>> GetWidgetZonesAsync()
+    {
+        return Task.FromResult<IList<string>>(new List<string>
+        {
+            AdminWidgetZones.ProductDetailsBlock
+        });
+    }
+
+    /// <summary>
+    /// Gets a type of a view component for displaying widget
+    /// </summary>
+    /// <param name="widgetZone">Name of the widget zone</param>
+    /// <returns>View component type</returns>
+    public Type GetWidgetViewComponent(string widgetZone)
+    {
+        if (widgetZone.Equals(AdminWidgetZones.ProductDetailsBlock))
+            return typeof(EscrowProductTypeViewComponent);
+
+        return null;
+    }
 
     /// <summary>
     /// Process a payment
@@ -252,16 +333,24 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
     /// <returns>A task that represents the asynchronous operation</returns>
     public override async Task InstallAsync()
     {
+        var attrGroupId = await CreateEscrowAttributesAsync();
+
         //settings
-        await _settingService.SaveSettingAsync(new EscrowSettings
-        {
-            UseSandbox = true,
-        });
+        _escrowSettings.EscrowSpecGroupId = attrGroupId;
+        _escrowSettings.UseSandbox = true;
+
+        await _settingService.SaveSettingAsync(_escrowSettings);
 
         if (!_paymentSettings.ActivePaymentMethodSystemNames.Contains(EscrowDefaults.SystemName))
         {
             _paymentSettings.ActivePaymentMethodSystemNames.Add(EscrowDefaults.SystemName);
             await _settingService.SaveSettingAsync(_paymentSettings);
+        }
+
+        if (!_widgetSettings.ActiveWidgetSystemNames.Contains(EscrowDefaults.SystemName))
+        {
+            _widgetSettings.ActiveWidgetSystemNames.Add(EscrowDefaults.SystemName);
+            await _settingService.SaveSettingAsync(_widgetSettings);
         }
 
         //locales
@@ -322,6 +411,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.ShippingFee"] = "Shipping fee",
         });
 
+
         await base.InstallAsync();
     }
 
@@ -338,7 +428,16 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
             await _settingService.SaveSettingAsync(_paymentSettings);
         }
 
+        await DeleteEscrowAttributesAsync(_escrowSettings.EscrowSpecGroupId);
+
         await _settingService.DeleteSettingAsync<EscrowSettings>();
+
+        //settings
+        if (_widgetSettings.ActiveWidgetSystemNames.Contains(EscrowDefaults.SystemName))
+        {
+            _widgetSettings.ActiveWidgetSystemNames.Remove(EscrowDefaults.SystemName);
+            await _settingService.SaveSettingAsync(_widgetSettings);
+        }
 
         //locales
         await _localizationService.DeleteLocaleResourcesAsync("Nop.Plugin.Payments.EscrowCom");
@@ -359,6 +458,11 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod
     #endregion
 
     #region Properies
+
+    /// <summary>
+    /// Gets a value indicating whether to hide this plugin on the widget list page in the admin area
+    /// </summary>
+    public bool HideInWidgetList => true;
 
     /// <summary>
     /// Gets a value indicating whether capture is supported

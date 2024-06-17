@@ -41,10 +41,15 @@ public class EscrowSettings : ISettings
     /// <summary>
     /// Payment item type
     /// </summary>
-    public PaymentItemType PaymentItemType { get; set; }
+    public ItemType PaymentItemType { get; set; }
 
     /// <summary>
     /// Who pays the fee
     /// </summary>
     public FeePayer FeePayer { get; set; }
+
+    /// <summary>
+    /// Gets or sets the group identifier with extra attributes
+    /// </summary>
+    public int EscrowSpecGroupId { get; set; }
 }
