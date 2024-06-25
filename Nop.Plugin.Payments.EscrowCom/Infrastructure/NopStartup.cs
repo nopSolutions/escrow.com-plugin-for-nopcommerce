@@ -5,6 +5,7 @@ using Nop.Core.Infrastructure;
 using Nop.Plugin.Payments.EscrowCom.Services;
 
 namespace Nop.Plugin.Payments.EscrowCom.Infrastructure;
+
 /// <summary>
 /// Represents object for the configuring services on application startup
 /// </summary>

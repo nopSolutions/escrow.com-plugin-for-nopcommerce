@@ -8,7 +8,7 @@ public class Party
     /// <summary>
     /// The email address of the party. You may also pass the value 'me' if the party object is representing the store account
     /// </summary>
-    public string Customer { get; set; } = "me";
+    public string Customer { get; set; }
 
     /// <summary>
     /// This is the role that the party is in the transaction
@@ -18,7 +18,7 @@ public class Party
     /// <summary>
     /// This field indicates whether or not the party has agreed to the transaction
     /// </summary>
-    public bool? Agreed { get; set; } = true;
+    public bool Agreed { get; set; }
 
     /// <summary>
     /// This field indicates whether or not the party was the initiator of the transaction

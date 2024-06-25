@@ -1,5 +1,4 @@
-﻿using DocumentFormat.OpenXml.Vml.Office;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Events;
@@ -8,9 +7,9 @@ using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Services.Common;
 using Nop.Services.Events;
 using Nop.Services.Payments;
-using Nop.Services.Security;
 
 namespace Nop.Plugin.Payments.EscrowCom.Services;
+
 /// <summary>
 /// Represents plugin event consumer
 /// </summary>
@@ -27,15 +26,22 @@ public class EventConsumer :
 
     #region Ctor
 
-    public EventConsumer(IGenericAttributeService genericAttributeService, IHttpContextAccessor httpContextAccessor, IPaymentPluginManager pluginManager)
+    public EventConsumer(IGenericAttributeService genericAttributeService,
+        IHttpContextAccessor httpContextAccessor,
+        IPaymentPluginManager pluginManager)
     {
         _genericAttributeService = genericAttributeService;
-        _httpContextAccessor = httpContextAccessor; 
+        _httpContextAccessor = httpContextAccessor;
         _pluginManager = pluginManager;
     }
 
     #endregion
 
+    /// <summary>
+    /// Handle product updated event
+    /// </summary>
+    /// <param name="eventMessage">Event message</param>
+    /// <returns>A task that represents the asynchronous operation</returns>
     public async Task HandleEventAsync(EntityUpdatedEvent<Product> eventMessage)
     {
         //ensure that Avalara tax provider is active

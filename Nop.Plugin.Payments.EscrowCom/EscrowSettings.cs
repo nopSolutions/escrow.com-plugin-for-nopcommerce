@@ -24,27 +24,12 @@ public class EscrowSettings : ISettings
     public bool UseSandbox { get; set; }
 
     /// <summary>
-    /// Currency used for transactions
-    /// </summary>
-    public PaymentCurrency Currency { get; set; } = PaymentCurrency.USD;
-
-    /// <summary>
-    /// Inspection period for transactions
+    /// Gets or sets an inspection period (in days) for transactions
     /// </summary>
     public int InspectionPeriod { get; set; }
 
     /// <summary>
-    /// Type of the fee
-    /// </summary>
-    public PaymentFeeType PaymentFeeType { get; set; }
-
-    /// <summary>
-    /// Payment item type
-    /// </summary>
-    public ItemType PaymentItemType { get; set; }
-
-    /// <summary>
-    /// Who pays the fee
+    /// Gets or sets a fee payer
     /// </summary>
     public FeePayer FeePayer { get; set; }
 

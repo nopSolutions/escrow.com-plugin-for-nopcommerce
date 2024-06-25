@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents additional information about item
 /// </summary>
-public record ExtraAttributes
+public class ExtraAttributes
 {
     /// <summary>
     /// Image URL representing the merchandise item

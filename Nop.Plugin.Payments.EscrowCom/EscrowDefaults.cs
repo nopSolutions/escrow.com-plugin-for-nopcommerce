@@ -18,7 +18,7 @@ public class EscrowDefaults
     /// <summary>
     /// Gets a route name to redirect after a failed API calling  
     /// </summary>
-    public static string FailedRouteName => "Homepage";
+    public static string FailedRouteName => "OrderDetails";
 
     /// <summary>
     /// Gets a route name to redirect after successful payment in Escrow.com wizard
@@ -31,14 +31,9 @@ public class EscrowDefaults
     public static string WebhookRouteName => "Plugin.Payments.EscrowCom.Webhook";
 
     /// <summary>
-    /// Gets the host URL for the production environment
+    /// Gets the host URL
     /// </summary>
-    public static string ApiHost => "https://api.escrow.com";
-
-    /// <summary>
-    /// Gets the host URL for the sandbox environment
-    /// </summary>
-    public static string SandboxApiHost => "https://api.escrow-sandbox.com";
+    public static (string Sandbox, string Production) ApiHost => ("https://api.escrow-sandbox.com", "https://api.escrow.com");
 
     /// <summary>
     /// Gets the Escrow Pay API Endpoint
@@ -51,11 +46,6 @@ public class EscrowDefaults
     public static string EscrowItemTypeAttribute => "EscrowItemType";
 
     /// <summary>
-    /// Gets the name of the generic attribute that is used to store specification attribute group
-    /// </summary>
-    public static string EscrowSpecificationAttributeGroupIdAttribute => "EscrowSpecificationAttributeGroup";
-
-    /// <summary>
     /// Gets the group name for extra attributes
     /// </summary>
     public static string EscrowSpecificationAttributeGroupName => "Escrow extra attributes";
@@ -63,5 +53,5 @@ public class EscrowDefaults
     /// <summary>
     /// Gets the names of Escrow extra attributes
     /// </summary>
-    public static string[] ExtraAttributeNames => ["vin", "odometer", "year", "make", "model", "title_collection", "lien_holder_payoff", "with_content", "concierge", "dns_manager", "term_period", "image_url", "merchant_url"];
+    public static string[] ExtraAttributeNames => ["vin", "odometer", "year", "make", "model", "title_collection", "lien_holder_payoff", "with_content", "concierge"];
 }

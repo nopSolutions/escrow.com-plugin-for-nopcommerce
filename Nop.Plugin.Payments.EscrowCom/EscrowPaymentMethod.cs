@@ -26,9 +26,8 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
 {
     #region Fields
 
-    private readonly EscrowService _escrowComService;
+    private readonly EscrowService _escrowService;
     private readonly EscrowSettings _escrowSettings;
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IActionContextAccessor _actionContextAccessor;
     private readonly ILocalizationService _localizationService;
     private readonly IRepository<SpecificationAttribute> _specificationAttributeRepository;
@@ -44,24 +43,21 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
 
     #region Ctor
 
-    public EscrowPaymentMethod(
-            EscrowService escrowComService,
-            EscrowSettings escrowSettings,
-            IHttpContextAccessor httpContextAccessor,
-            IActionContextAccessor actionContextAccessor,
-            ILocalizationService localizationService,
-            IRepository<SpecificationAttribute> specificationAttributeRepository,
-            IRepository<SpecificationAttributeGroup> specificationAttributeGroupRepository,
-            IRepository<SpecificationAttributeOption> specificationAttributeOptionRepository,
-            ISettingService settingService,
-            IUrlHelperFactory urlHelperFactory,
-            IWebHelper webHelper,
-            PaymentSettings paymentSettings,
-            WidgetSettings widgetSettings)
+    public EscrowPaymentMethod(EscrowService escrowService,
+        EscrowSettings escrowSettings,
+        IActionContextAccessor actionContextAccessor,
+        ILocalizationService localizationService,
+        IRepository<SpecificationAttribute> specificationAttributeRepository,
+        IRepository<SpecificationAttributeGroup> specificationAttributeGroupRepository,
+        IRepository<SpecificationAttributeOption> specificationAttributeOptionRepository,
+        ISettingService settingService,
+        IUrlHelperFactory urlHelperFactory,
+        IWebHelper webHelper,
+        PaymentSettings paymentSettings,
+        WidgetSettings widgetSettings)
     {
-        _escrowComService = escrowComService;
+        _escrowService = escrowService;
         _escrowSettings = escrowSettings;
-        _httpContextAccessor = httpContextAccessor;
         _actionContextAccessor = actionContextAccessor;
         _localizationService = localizationService;
         _specificationAttributeRepository = specificationAttributeRepository;
@@ -80,7 +76,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
 
     private async Task<int> CreateEscrowAttributesAsync()
     {
-        var newGroup = new SpecificationAttributeGroup() { Name = EscrowDefaults.EscrowSpecificationAttributeGroupName };
+        var newGroup = new SpecificationAttributeGroup { Name = EscrowDefaults.EscrowSpecificationAttributeGroupName };
         await _specificationAttributeGroupRepository.InsertAsync(newGroup);
 
         foreach (var name in EscrowDefaults.ExtraAttributeNames)
@@ -168,14 +164,14 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             var returnUrl = urlHelper
                 .RouteUrl(EscrowDefaults.CompletedRouteName, new { orderId = postProcessPaymentRequest.Order.Id }, _webHelper.GetCurrentRequestProtocol());
 
-            redirectUrl = await _escrowComService.CreateTransactionAsync(postProcessPaymentRequest.Order, returnUrl);
+            redirectUrl = await _escrowService.CreateTransactionAsync(postProcessPaymentRequest.Order, returnUrl);
         }
 
         //unsuccessful attempt
         if (string.IsNullOrEmpty(redirectUrl))
-            redirectUrl = urlHelper.RouteUrl(EscrowDefaults.FailedRouteName);
+            redirectUrl = urlHelper.RouteUrl(EscrowDefaults.FailedRouteName, new { orderId = postProcessPaymentRequest.Order.Id }, _webHelper.GetCurrentRequestProtocol());
 
-        _httpContextAccessor.HttpContext?.Response.Redirect(redirectUrl);
+        _actionContextAccessor.ActionContext.HttpContext.Response.Redirect(redirectUrl);
     }
 
     /// <summary>
@@ -253,7 +249,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     /// </returns>
     public Task<bool> HidePaymentMethodAsync(IList<ShoppingCartItem> cart)
     {
-        var notConfigured = !_escrowComService.IsConfigured();
+        var notConfigured = !_escrowService.IsConfigured();
         return Task.FromResult(notConfigured);
     }
 
@@ -280,7 +276,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     /// </returns>
     public Task<bool> CanRePostProcessPaymentAsync(Order order)
     {
-        return Task.FromResult(false);
+        return Task.FromResult(true);
     }
 
     /// <summary>
@@ -294,6 +290,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     public Task<IList<string>> ValidatePaymentFormAsync(IFormCollection form)
     {
         ArgumentNullException.ThrowIfNull(form);
+
         return Task.FromResult<IList<string>>(new List<string>());
     }
 
@@ -308,6 +305,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     public Task<ProcessPaymentRequest> GetPaymentInfoAsync(IFormCollection form)
     {
         ArgumentNullException.ThrowIfNull(form);
+
         return Task.FromResult(new ProcessPaymentRequest());
     }
 
@@ -335,11 +333,13 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     {
         var attrGroupId = await CreateEscrowAttributesAsync();
 
-        //settings
-        _escrowSettings.EscrowSpecGroupId = attrGroupId;
-        _escrowSettings.UseSandbox = true;
-
-        await _settingService.SaveSettingAsync(_escrowSettings);
+        await _settingService.SaveSettingAsync(new EscrowSettings
+        {
+            EscrowSpecGroupId = attrGroupId,
+            FeePayer = Domain.FeePayer.Buyer,
+            UseSandbox = true,
+            InspectionPeriod = 1
+        });
 
         if (!_paymentSettings.ActivePaymentMethodSystemNames.Contains(EscrowDefaults.SystemName))
         {
@@ -353,64 +353,35 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             await _settingService.SaveSettingAsync(_widgetSettings);
         }
 
-        //locales
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
         {
-            ["Nop.Plugin.Payments.EscrowCom.Fields.ApiKey"] = "API key",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.ApiKey.Hint"] = "Escrow API key. API keys are specific to an environment, so you may not use a sandbox API key in production or a production API key in sandbox.",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.Email"] = "Email",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.Email.Hint"] = "Email address used on Escrow.com.",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.UseSandbox"] = "Use Sandbox",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.UseSandbox.Hint"] = "Check to enable Sandbox (testing environment).",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.Currency"] = "Currency",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.Currency.Hint"] = "The currency for the transaction.",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.InspectionPeriod"] = "Inspection period",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.InspectionPeriod.Hint"] = "The length of the inspection period in seconds. Currently the inspection period must be in whole multiples of days. e.g half a day (43200 seconds) is invalid where as 1 day (86400 seconds) and 2 days (172800 seconds) would be valid.",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.PaymentItemType"] = "Transaction item type",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.PaymentItemType.Hint"] = "The transaction item type - can affect behaviour of the transaction and can also be used to specify party-specific fees",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.PaymentFeeType"] = "Transaction fee type",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.PaymentFeeType.Hint"] = "Type of fee used for transactions",
-
-            ["Nop.Plugin.Payments.EscrowCom.Fields.FeePayer"] = "Who will pay the fee?",
-            ["Nop.Plugin.Payments.EscrowCom.Fields.FeePayer.Hint"] = "Choose the party who will pay the fee",
-            ["Nop.Plugin.Payments.EscrowCom.PaymentMethodDescription"] = "You will be redirected to escrow.com to complete the order.",
-
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentCurrency.AUD"] = "AUD",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentCurrency.CAD"] = "CAD",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentCurrency.EUR"] = "EUR",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentCurrency.GBP"] = "GBP",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentCurrency.USD"] = "USD",
+            ["Plugins.Payments.EscrowCom"] = "Escrow.com",
+            ["Plugins.Payments.EscrowCom.Currency.Warning"] = "The <a href=\"{1}\" target=\"_blank\">primary store currency</a> ({0}) is not supported by Escrow.com. Currently the only currencies that are supported are USD, EUR, AUD, GBP, CAD.",
+            ["Plugins.Payments.EscrowCom.Fields.ApiKey"] = "API key",
+            ["Plugins.Payments.EscrowCom.Fields.ApiKey.Hint"] = "Escrow API key. API keys are specific to an environment, so you may not use a sandbox API key in production or a production API key in sandbox.",
+            ["Plugins.Payments.EscrowCom.Fields.ApiKey.Required"] = "API key is required",
+            ["Plugins.Payments.EscrowCom.Fields.Email"] = "Email",
+            ["Plugins.Payments.EscrowCom.Fields.Email.Hint"] = "Email address used on Escrow.com.",
+            ["Plugins.Payments.EscrowCom.Fields.Email.Required"] = "Email is required",
+            ["Plugins.Payments.EscrowCom.Fields.UseSandbox"] = "Use Sandbox",
+            ["Plugins.Payments.EscrowCom.Fields.UseSandbox.Hint"] = "Check to enable Sandbox (testing environment).",
+            ["Plugins.Payments.EscrowCom.Fields.InspectionPeriod"] = "Inspection period",
+            ["Plugins.Payments.EscrowCom.Fields.InspectionPeriod.Hint"] = "The length of the inspection period in days. Currently the inspection period must be in whole multiples of days, e.g. half a day is invalid where as 1 day and 2 days would be valid.",
+            ["Plugins.Payments.EscrowCom.Fields.InspectionPeriod.Invalid"] = "Inspection period should be in range 1 to 30",
+            ["Plugins.Payments.EscrowCom.Fields.FeePayer"] = "Who will pay the fee?",
+            ["Plugins.Payments.EscrowCom.Fields.FeePayer.Hint"] = "Choose the party who will pay the fee.",
+            ["Plugins.Payments.EscrowCom.ItemType"] = "Escrow item type",
+            ["Plugins.Payments.EscrowCom.ItemType.Hint"] = "The item type - can affect behaviour of the transaction and can also be used to specify party-specific fees.",
+            ["Plugins.Payments.EscrowCom.PaymentMethodDescription"] = "You will be redirected to Escrow.com to complete the order.",
 
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.FeePayer.Buyer"] = "Buyer",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.FeePayer.Seller"] = "Seller",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.FeePayer.Split"] = "Will be paid in half",
 
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PartyRole.Broker"] = "Broker",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PartyRole.Buyer"] = "Buyer",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PartyRole.Partner"] = "Partner",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PartyRole.Seller"] = "Seller",
-
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.Concierge"] = "Concierge",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.CreditCard"] = "Credit card",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.Disbursement"] = "Disbursement",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.DomainNameHolding"] = "Domain name holding",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.Escrow"] = "Escrow",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.Intermediary"] = "Intermediary",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.LienHolderPayoff"] = "Lien holder payoff",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.MotorVehicle"] = "Motor vehicle",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.Other"] = "Other",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentFeeType.TitleCollection"] = "Title collection service",
-
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.BrokerFee"] = "Broker fee",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.DomainName"] = "Domain name",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.DomainNameHolding"] = "Domain name holding",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.GeneralMerchandise"] = "General merchandise",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.Milestone"] = "Milestone",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.MotorVehicle"] = "Motor vehicle",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.PartnerFee"] = "Partner fee",
-            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.PaymentItemType.ShippingFee"] = "Shipping fee",
+            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.GeneralMerchandise"] = "General merchandise",
+            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.MotorVehicle"] = "Motor vehicle",
+            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.DomainName"] = "Domain name",
         });
-
 
         await base.InstallAsync();
     }
@@ -421,7 +392,6 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     /// <returns>A task that represents the asynchronous operation</returns>
     public override async Task UninstallAsync()
     {
-        //settings
         if (_paymentSettings.ActivePaymentMethodSystemNames.Contains(EscrowDefaults.SystemName))
         {
             _paymentSettings.ActivePaymentMethodSystemNames.Remove(EscrowDefaults.SystemName);
@@ -432,15 +402,13 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
 
         await _settingService.DeleteSettingAsync<EscrowSettings>();
 
-        //settings
         if (_widgetSettings.ActiveWidgetSystemNames.Contains(EscrowDefaults.SystemName))
         {
             _widgetSettings.ActiveWidgetSystemNames.Remove(EscrowDefaults.SystemName);
             await _settingService.SaveSettingAsync(_widgetSettings);
         }
 
-        //locales
-        await _localizationService.DeleteLocaleResourcesAsync("Nop.Plugin.Payments.EscrowCom");
+        await _localizationService.DeleteLocaleResourcesAsync("Plugins.Payments.EscrowCom");
         await _localizationService.DeleteLocaleResourcesAsync("Enums.Nop.Plugin.Payments.EscrowCom");
 
         await base.UninstallAsync();
@@ -452,7 +420,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     /// <returns>A task that represents the asynchronous operation</returns>
     public async Task<string> GetPaymentMethodDescriptionAsync()
     {
-        return await _localizationService.GetResourceAsync("Nop.Plugin.Payments.EscrowCom.PaymentMethodDescription");
+        return await _localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.PaymentMethodDescription");
     }
 
     #endregion

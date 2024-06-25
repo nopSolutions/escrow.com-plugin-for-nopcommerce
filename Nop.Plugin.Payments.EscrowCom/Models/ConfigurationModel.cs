@@ -13,33 +13,21 @@ namespace Nop.Plugin.Payments.EscrowCom.Models;
 /// </summary>
 public record ConfigurationModel : BaseNopModel
 {
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.ApiKey")]
+    [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.ApiKey")]
     [NoTrim]
     [DataType(DataType.Password)]
     public string ApiKey { get; set; }
 
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.Email")]
+    [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.Email")]
     public string Email { get; set; }
 
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.UseSandbox")]
+    [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.UseSandbox")]
     public bool UseSandbox { get; set; }
 
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.Currency")]
-    public PaymentCurrency Currency { get; set; } = PaymentCurrency.USD;
-    public static List<SelectListItem> AvailableCurrencies => PaymentCurrency.USD.ToSelectListAsync().Result?.ToList() ?? new();
-
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.InspectionPeriod")]
+    [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.InspectionPeriod")]
     public int InspectionPeriod { get; set; }
 
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.PaymentItemType")]
-    public ItemType PaymentItemType { get; set; }
-    public static List<SelectListItem> AvailablePaymentItemTypes => ItemType.GeneralMerchandise.ToSelectListAsync().Result?.ToList() ?? new();
-
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.PaymentFeeType")]
-    public PaymentFeeType PaymentFeeType { get; set; }
-    public static List<SelectListItem> AvailablePaymentFeeTypes => PaymentFeeType.Escrow.ToSelectListAsync().Result?.ToList() ?? new();
-
-    [NopResourceDisplayName("Nop.Plugin.Payments.EscrowCom.Fields.FeePayer")]
+    [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.FeePayer")]
     public FeePayer FeePayer { get; set; }
     public static List<SelectListItem> AvailableFeePayers => FeePayer.Buyer.ToSelectListAsync().Result?.ToList() ?? new();
 }

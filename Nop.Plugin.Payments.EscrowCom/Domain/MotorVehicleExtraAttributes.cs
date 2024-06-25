@@ -1,6 +1,9 @@
 ﻿namespace Nop.Plugin.Payments.EscrowCom.Domain;
 
-public record MotorVehicleExtraAttributes : ExtraAttributes
+/// <summary>
+/// Represents additional information about item (motor vehicle transactions)
+/// </summary>
+public class MotorVehicleExtraAttributes : ExtraAttributes
 {
     /// <summary>
     /// The vehicle's vehicle identification number (VIN).
@@ -15,7 +18,7 @@ public record MotorVehicleExtraAttributes : ExtraAttributes
     /// <summary>
     /// The year the vehicle was manufactured.
     /// </summary>
-    public int? Year { get; set; }
+    public int Year { get; set; }
 
     /// <summary>
     /// The manufacturer of the vehicle.
@@ -35,5 +38,5 @@ public record MotorVehicleExtraAttributes : ExtraAttributes
     /// <summary>
     /// Enable the lien holder payoff service.
     /// </summary>
-    public bool? LienHolderPayoff { get; set; }
+    public bool LienHolderPayoff { get; set; }
 }

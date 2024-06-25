@@ -2,6 +2,7 @@
 using Nop.Web.Framework.Components;
 
 namespace Nop.Plugin.Payments.EscrowCom.Components;
+
 public class EscrowPaymentInfoViewComponent : NopViewComponent
 {
     /// <summary>

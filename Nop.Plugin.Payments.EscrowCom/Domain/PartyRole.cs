@@ -1,4 +1,5 @@
 ﻿namespace Nop.Plugin.Payments.EscrowCom.Domain;
+
 /// <summary>
 /// Represents the party transaction role
 /// </summary>

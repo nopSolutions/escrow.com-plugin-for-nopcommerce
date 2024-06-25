@@ -1,4 +1,5 @@
 ﻿namespace Nop.Plugin.Payments.EscrowCom.Domain;
+
 public class Transaction
 {
     public int Id { get; set; }

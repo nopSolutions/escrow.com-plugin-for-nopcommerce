@@ -8,7 +8,7 @@ public class PaymentRequest
     /// <summary>
     /// The currency for the transaction
     /// </summary>
-    public PaymentCurrency Currency { get; set; } = PaymentCurrency.USD;
+    public string Currency { get; set; }
 
     /// <summary>
     /// This is a brief description of what the transaction is for

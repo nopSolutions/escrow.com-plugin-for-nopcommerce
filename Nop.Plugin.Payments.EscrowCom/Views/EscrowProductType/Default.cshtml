@@ -1,6 +1,6 @@
 ﻿@model ItemTypeModel
 
-<nop-card asp-name="product-escrow" asp-icon="fas fa-random" asp-title="Escrow" asp-hide-block-attribute-name="ProductPage.EscrowBlock" asp-hide="false" asp-advanced="false">
+<nop-card asp-name="product-escrow" asp-icon="fas fa-random" asp-title="@T("Plugins.Payments.EscrowCom")" asp-hide-block-attribute-name="ProductPage.EscrowBlock" asp-hide="false" asp-advanced="false">
     <div class="card-body">
         <div class="cards-group">
             <div class="form-group row">
@@ -9,7 +9,6 @@
                 </div>
                 <div class="col-md-9">
                     <nop-select asp-for="EscrowItemType" asp-items="Model.AvailableItemTypes" />
-
                 </div>
             </div>
         </div>

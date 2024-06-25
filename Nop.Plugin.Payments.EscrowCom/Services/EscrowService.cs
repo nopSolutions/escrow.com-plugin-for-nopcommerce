@@ -5,23 +5,28 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Net.Http.Headers;
 using Nop.Core;
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
-using Nop.Core.Domain.Payments;
 using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
+using Nop.Services.Directory;
 using Nop.Services.Logging;
+using Nop.Services.Media;
 using Nop.Services.Orders;
+using Nop.Services.Seo;
+using Nop.Services.Stores;
+using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Plugin.Payments.EscrowCom.Services;
+
 public class EscrowService
 {
     #region Fields
 
-    private readonly EscrowSettings _escrowComSettings;
-    private readonly HttpClient _httpClient;
     private static readonly JsonSerializerOptions _serializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -33,38 +38,60 @@ public class EscrowService
         }
     };
 
+    private readonly CurrencySettings _currencySettings;
+    private readonly EscrowSettings _escrowSettings;
+    private readonly HttpClient _httpClient;
+    private readonly ICurrencyService _currencyService;
     private readonly ICustomerService _customerService;
-    private readonly ILogger _logger;
     private readonly IGenericAttributeService _genericAttributeService;
-    private readonly IOrderService _orderService;
+    private readonly ILogger _logger;
+    private readonly INopUrlHelper _nopUrlHelper;
     private readonly IOrderProcessingService _orderProcessingService;
+    private readonly IOrderService _orderService;
+    private readonly IPictureService _pictureService;
     private readonly IProductService _productService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
+    private readonly IStoreService _storeService;
+    private readonly IUrlRecordService _urlRecordService;
+    private readonly IWebHelper _webHelper;
 
     #endregion
 
     #region Ctor
 
-    public EscrowService(
+    public EscrowService(CurrencySettings currencySettings,
+        EscrowSettings escrowSettings,
         HttpClient httpClient,
-        EscrowSettings escrowComSettings,
+        ICurrencyService currencyService,
         ICustomerService customerService,
-        ILogger logger,
         IGenericAttributeService genericAttributeService,
-        IOrderService orderService,
+        ILogger logger,
+        INopUrlHelper nopUrlHelper,
         IOrderProcessingService orderProcessingService,
+        IOrderService orderService,
+        IPictureService pictureService,
         IProductService productService,
-        ISpecificationAttributeService specificationAttributeService)
+        ISpecificationAttributeService specificationAttributeService,
+        IStoreService storeService,
+        IUrlRecordService urlRecordService,
+        IWebHelper webHelper)
     {
+        _currencySettings = currencySettings;
+        _escrowSettings = escrowSettings;
         _httpClient = httpClient;
-        _escrowComSettings = escrowComSettings;
+        _currencyService = currencyService;
         _customerService = customerService;
-        _logger = logger;
         _genericAttributeService = genericAttributeService;
-        _orderService = orderService;
+        _logger = logger;
+        _nopUrlHelper = nopUrlHelper;
         _orderProcessingService = orderProcessingService;
+        _orderService = orderService;
+        _pictureService = pictureService;
         _productService = productService;
         _specificationAttributeService = specificationAttributeService;
+        _storeService = storeService;
+        _urlRecordService = urlRecordService;
+        _webHelper = webHelper;
     }
 
     #endregion
@@ -81,7 +108,7 @@ public class EscrowService
 
         if (!_httpClient.DefaultRequestHeaders.Contains(HeaderNames.Authorization))
         {
-            var auth = Encoding.ASCII.GetBytes($"{_escrowComSettings.Email}:{_escrowComSettings.ApiKey}");
+            var auth = Encoding.ASCII.GetBytes($"{_escrowSettings.Email}:{_escrowSettings.ApiKey}");
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(auth));
         }
 
@@ -94,137 +121,183 @@ public class EscrowService
     /// </summary>
     /// <param name="customer">Buyer</param>
     /// <returns>Array of transaction fees</returns>
-    /// <exception cref="ArgumentNullException">It will be thrown if buyer is fee payer</exception>
     private PaymentFee[] GetFees(Customer customer)
     {
-        if (customer == null && _escrowComSettings.FeePayer == FeePayer.Buyer)
-            throw new ArgumentNullException(nameof(customer));
+        ArgumentNullException.ThrowIfNull(customer);
 
-        return _escrowComSettings.FeePayer switch
+        return _escrowSettings.FeePayer switch
         {
-            FeePayer.Buyer => [new() { PayerCustomer = customer.Email, Type = _escrowComSettings.PaymentFeeType, Split = 1 }],
-            FeePayer.Seller => [new() { PayerCustomer = "me", Type = _escrowComSettings.PaymentFeeType, Split = 1 }],
-            FeePayer.Split => [
-                new() { PayerCustomer = customer.Email, Type = _escrowComSettings.PaymentFeeType, Split = .5m },
-                new() { PayerCustomer = "me", Type = _escrowComSettings.PaymentFeeType, Split = .5m }],
+            FeePayer.Buyer => [new() { PayerCustomer = customer.Email, Type = PaymentFeeType.Escrow, Split = 1 }],
+            FeePayer.Seller => [new() { PayerCustomer = _escrowSettings.Email, Type = PaymentFeeType.Escrow, Split = 1 }],
+            FeePayer.Split =>
+            [
+                new() { PayerCustomer = customer.Email, Type = PaymentFeeType.Escrow, Split = .5m },
+                new() { PayerCustomer = _escrowSettings.Email, Type = PaymentFeeType.Escrow, Split = .5m }
+            ],
             _ => []
         };
     }
 
     #endregion
 
+    #region Methods
+
     /// <summary>
     /// Calling the Escrow Pay API
     /// </summary>
     /// <param name="order">An order</param>
-    /// <returns>The URL to which the buyer will be redirected</returns>
+    /// <param name="returnUrl">URL to redirect after successful payment in Escrow.com wizard</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation
+    /// The task result contains the URL to which the buyer will be redirected
+    /// </returns>
     public async Task<string> CreateTransactionAsync(Order order, string returnUrl)
     {
-        //products
-        var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
-        var paymentItems = new List<PaymentItem>();
-
-        var buyer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
-
-
-        foreach (var item in orderItems)
+        try
         {
-            var product = await _productService.GetProductByIdAsync(item.ProductId);
-            var itemType = await _genericAttributeService.GetAttributeAsync<ItemType?>(product, EscrowDefaults.EscrowItemTypeAttribute)
-                ?? ItemType.GeneralMerchandise;
+            var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
+            var store = await _storeService.GetStoreByIdAsync(order.StoreId);
+            var currency = await _currencyService.GetCurrencyByIdAsync(_currencySettings.PrimaryStoreCurrencyId);
 
-            var attrs = await _specificationAttributeService.GetSpecificationAttributesByGroupIdAsync(_escrowComSettings.EscrowSpecGroupId);
+            if (!Enum.TryParse(typeof(PaymentCurrency), currency.CurrencyCode, out _))
+                throw new NopException($"Currency '{currency.CurrencyCode}' not supported");
 
-
-            var extraAttributes = new Dictionary<string, string>();
-
-            foreach (var attr in attrs)
+            //products
+            var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
+            var paymentItems = new List<PaymentItem>();
+            foreach (var item in orderItems)
             {
+                var product = await _productService.GetProductByIdAsync(item.ProductId);
+                var seName = await _urlRecordService.GetSeNameAsync(product);
+                var productUrl = await _nopUrlHelper.RouteGenericUrlAsync<Product>(new { SeName = seName }, _webHelper.GetCurrentRequestProtocol());
+                var itemPicture = await _pictureService.GetProductPictureAsync(product, item.AttributesXml);
+                var imageUrl = (await _pictureService.GetPictureUrlAsync(itemPicture)).Url;
+                var itemType = await _genericAttributeService.GetAttributeAsync<ItemType?>(product, EscrowDefaults.EscrowItemTypeAttribute)
+                    ?? ItemType.GeneralMerchandise;
+                var extraAttributes = new ExtraAttributes { ImageUrl = imageUrl, MerchantUrl = productUrl };
+                if (itemType == ItemType.DomainName)
+                {
+                    extraAttributes = new DomainNameExtraAttributes(extraAttributes);
 
-                var option = (await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(attr.Id))?.FirstOrDefault();
+                    //get product attributes
+                };
+                if (itemType == ItemType.MotorVehicle)
+                {
+                    extraAttributes = new MotorVehicleExtraAttributes(extraAttributes);
 
-                if (option is null)
-                    continue;
+                    //get product attributes
 
-                var psa = (await _specificationAttributeService.GetProductSpecificationAttributesAsync(product.Id, specificationAttributeOptionId: option.Id))?.FirstOrDefault();
+                    //get specification attributes
 
-                if (string.IsNullOrEmpty(psa?.CustomValue))
-                    continue;
+                    var attrs = await _specificationAttributeService.GetSpecificationAttributesByGroupIdAsync(_escrowSettings.EscrowSpecGroupId);
+                    foreach (var attr in attrs)
+                    {
+                        var option = (await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(attr.Id))?.FirstOrDefault();
 
-                extraAttributes.Add(attr.Name, psa?.CustomValue);
+                        if (option is null)
+                            continue;
+
+                        var psa = (await _specificationAttributeService.GetProductSpecificationAttributesAsync(product.Id, specificationAttributeOptionId: option.Id))?.FirstOrDefault();
+
+                        if (string.IsNullOrEmpty(psa?.CustomValue))
+                            continue;
+
+                        extraAttributes.Add(attr.Name, psa?.CustomValue);
+                    }
+                };
+
+                paymentItems.Add(new()
+                {
+                    Title = CommonHelper.EnsureMaximumLength(product.Name, 200),
+                    Description = CommonHelper.EnsureMaximumLength(product.ShortDescription, 500),
+                    Quantity = item.Quantity,
+                    InspectionPeriod = _escrowSettings.InspectionPeriod * 86400,
+                    Type = itemType,
+                    ExtraAttributes = extraAttributes,
+                    Schedule = [new()
+                    {
+                        Amount = item.PriceInclTax,
+                        PayerCustomer = customer.Email,
+                        BeneficiaryCustomer = _escrowSettings.Email
+                    }],
+                    Fees = GetFees(customer)
+                });
             }
 
-
-            paymentItems.Add(new()
+            //add shipping fee
+            if (order.OrderShippingInclTax > decimal.Zero)
             {
-                Title = product.Name,
-                Description = product.ShortDescription,
-                Quantity = item.Quantity,
-                Type = itemType,
-                ExtraAttributes = extraAttributes,
-                Schedule = [new()
+                paymentItems.Add(new()
                 {
-                    Amount = item.UnitPriceInclTax,
-                    PayerCustomer = buyer.Email
-                }],
-                Fees = GetFees(buyer)
-            });
-        }
+                    Type = ItemType.ShippingFee,
+                    InspectionPeriod = _escrowSettings.InspectionPeriod * 86400,
+                    Schedule = [new()
+                    {
+                        Amount = order.OrderShippingInclTax,
+                        PayerCustomer = customer.Email,
+                        BeneficiaryCustomer = _escrowSettings.Email
+                    }]
+                });
+            }
 
-        //prepare request parameters
-        var requestString = JsonSerializer.Serialize(new PaymentRequest
-        {
-            Description = $"Escrow Transaction for Order #{order.OrderGuid}",
-            Reference = order.OrderGuid.ToString(),
-            ReturnUrl = returnUrl,
-            Items = paymentItems.ToArray(),
-            Parties = new[]
+            //prepare request parameters
+            var request = new PaymentRequest
             {
-                new Party
+                Currency = currency.CurrencyCode,
+                Description = CommonHelper.EnsureMaximumLength($"Transaction for order #{order.OrderGuid} in '{store.Name}'", 256),
+                Reference = order.OrderGuid.ToString(),
+                ReturnUrl = returnUrl,
+                Items = paymentItems.ToArray(),
+                Parties = new[]
                 {
-                    Customer = "me",
-                    Role = PartyRole.Seller,
-                    Initiator = true,
-                },
-                new Party
-                {
-                    Customer = buyer.Email,
-                    Role = PartyRole.Buyer
+                    new Party
+                    {
+                        Customer = _escrowSettings.Email,
+                        Role = PartyRole.Seller,
+                        Initiator = true,
+                        Agreed = true
+                    },
+                    new Party
+                    {
+                        Customer = customer.Email,
+                        Role = PartyRole.Buyer,
+                        Agreed = true
+                    }
                 }
+            };
+
+            //execute request and get response
+            var apiHost = _escrowSettings.UseSandbox ? EscrowDefaults.ApiHost.Sandbox : EscrowDefaults.ApiHost.Production;
+
+            var requestMessage = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"{apiHost}{EscrowDefaults.PayPath}"),
+                Method = HttpMethod.Post,
+                Content = new StringContent(JsonSerializer.Serialize(request, _serializerOptions), Encoding.UTF8, MimeTypes.ApplicationJson)
+            };
+
+            EnsureHttpClient();
+
+            var httpResponse = await _httpClient.SendAsync(requestMessage);
+
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                var responseContent = await httpResponse.Content.ReadAsStringAsync();
+                throw new HttpRequestException(responseContent, null, httpResponse.StatusCode);
             }
 
-        }, _serializerOptions);
+            //return result
+            using var responseStream = await httpResponse.Content.ReadAsStreamAsync();
+            var result = await JsonSerializer.DeserializeAsync<PaymentResponse>(responseStream, _serializerOptions);
 
-        //execute request and get response
-        var apiHost = _escrowComSettings.UseSandbox ? EscrowDefaults.SandboxApiHost : EscrowDefaults.ApiHost;
-
-        var requestMessage = new HttpRequestMessage
+            return result.LandingPage;
+        }
+        catch (Exception exception)
         {
-            RequestUri = new Uri($"{apiHost}{EscrowDefaults.PayPath}"),
-            Method = HttpMethod.Post,
-            Content = new StringContent(
-                    requestString, Encoding.UTF8, MimeTypes.ApplicationJson)
-        };
-
-        EnsureHttpClient();
-
-        var httpResponse = await _httpClient.SendAsync(requestMessage);
-
-        if (!httpResponse.IsSuccessStatusCode)
-        {
-            var responseContent = await httpResponse.Content.ReadAsStringAsync();
-            var exeption = new HttpRequestException(responseContent, null, httpResponse.StatusCode);
-
-            await _logger.ErrorAsync($"Escrow.com plugin: {httpResponse.ReasonPhrase}", exeption);
+            await _logger.ErrorAsync($"{EscrowDefaults.SystemName} error: {exception.Message}", exception);
 
             return string.Empty;
         }
-
-        //return result
-        using var responseStream = await httpResponse.Content.ReadAsStreamAsync();
-        var result = await JsonSerializer.DeserializeAsync<PaymentResponse>(responseStream, _serializerOptions);
-
-        return result.LandingPage;
     }
 
     /// <summary>
@@ -244,13 +317,11 @@ public class EscrowService
         var body = await reader.ReadToEndAsync();
         var eventResult = JsonSerializer.Deserialize<WebhookEvent>(body, _serializerOptions);
 
-
         if (eventResult is null or { TransactionId: 0 })
             return;
 
         //execute request and get response
-        var apiHost = _escrowComSettings.UseSandbox ? EscrowDefaults.SandboxApiHost : EscrowDefaults.ApiHost;
-
+        var apiHost = _escrowSettings.UseSandbox ? EscrowDefaults.ApiHost.Sandbox : EscrowDefaults.ApiHost.Production;
 
         var requestMessage = new HttpRequestMessage
         {
@@ -324,11 +395,12 @@ public class EscrowService
     /// <summary>
     /// Check whether the plugin is configured
     /// </summary>
-    /// <param name="settings">Plugin settings</param>
     /// <returns>Result</returns>
     public bool IsConfigured()
     {
         //email and API key are required to request services
-        return !string.IsNullOrEmpty(_escrowComSettings.Email) && !string.IsNullOrEmpty(_escrowComSettings.ApiKey);
+        return !string.IsNullOrEmpty(_escrowSettings.Email) && !string.IsNullOrEmpty(_escrowSettings.ApiKey);
     }
+
+    #endregion
 }

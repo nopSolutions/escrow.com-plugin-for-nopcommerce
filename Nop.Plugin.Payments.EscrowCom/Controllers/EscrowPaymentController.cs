@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Nop.Core.Domain.Directory;
+using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Plugin.Payments.EscrowCom.Models;
 using Nop.Services.Configuration;
+using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Security;
@@ -15,22 +18,31 @@ namespace Nop.Plugin.Payments.EscrowCom.Controllers;
 [AutoValidateAntiforgeryToken]
 public class EscrowPaymentController : BasePaymentController
 {
+    #region Fields
+
+    private readonly CurrencySettings _currencySettings;
     private readonly EscrowSettings _escrowSettings;
+    private readonly ICurrencyService _currencyService;
     private readonly ILocalizationService _localizationService;
     private readonly INotificationService _notificationService;
     private readonly IPermissionService _permissionService;
     private readonly ISettingService _settingService;
 
+    #endregion
+
     #region Ctor
 
-    public EscrowPaymentController(
+    public EscrowPaymentController(CurrencySettings currencySettings,
         EscrowSettings escrowSettings,
+        ICurrencyService currencyService,
         ILocalizationService localizationService,
         INotificationService notificationService,
         IPermissionService permissionService,
         ISettingService settingService)
     {
+        _currencySettings = currencySettings;
         _escrowSettings = escrowSettings;
+        _currencyService = currencyService;
         _localizationService = localizationService;
         _notificationService = notificationService;
         _permissionService = permissionService;
@@ -38,6 +50,8 @@ public class EscrowPaymentController : BasePaymentController
     }
 
     #endregion
+
+    #region Methods
 
     public async Task<IActionResult> Configure()
     {
@@ -49,12 +63,18 @@ public class EscrowPaymentController : BasePaymentController
             Email = _escrowSettings.Email,
             ApiKey = _escrowSettings.ApiKey,
             UseSandbox = _escrowSettings.UseSandbox,
-            Currency = _escrowSettings.Currency,
             FeePayer = _escrowSettings.FeePayer,
-            InspectionPeriod = _escrowSettings.InspectionPeriod,
-            PaymentItemType = _escrowSettings.PaymentItemType,
-            PaymentFeeType = _escrowSettings.PaymentFeeType
+            InspectionPeriod = _escrowSettings.InspectionPeriod
         };
+
+        //check currency
+        var currency = await _currencyService.GetCurrencyByIdAsync(_currencySettings.PrimaryStoreCurrencyId);
+        if (!Enum.TryParse(typeof(PaymentCurrency), currency.CurrencyCode, out _))
+        {
+            var locale = await _localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.Currency.Warning");
+            var warning = string.Format(locale, currency.CurrencyCode, Url.Action("List", "Currency"));
+            _notificationService.WarningNotification(warning, false);
+        }
 
         return View("~/Plugins/Payments.EscrowCom/Views/Configure.cshtml", model);
     }
@@ -72,11 +92,8 @@ public class EscrowPaymentController : BasePaymentController
         _escrowSettings.Email = model.Email;
         _escrowSettings.ApiKey = model.ApiKey;
         _escrowSettings.UseSandbox = model.UseSandbox;
-        _escrowSettings.Currency = model.Currency;
         _escrowSettings.FeePayer = model.FeePayer;
         _escrowSettings.InspectionPeriod = model.InspectionPeriod;
-        _escrowSettings.PaymentFeeType = model.PaymentFeeType;
-        _escrowSettings.PaymentItemType = model.PaymentItemType;
 
         _settingService.SaveSetting(_escrowSettings);
 
@@ -84,4 +101,6 @@ public class EscrowPaymentController : BasePaymentController
 
         return await Configure();
     }
+
+    #endregion
 }

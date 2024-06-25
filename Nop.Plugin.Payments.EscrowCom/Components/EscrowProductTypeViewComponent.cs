@@ -10,6 +10,7 @@ using Nop.Web.Framework.Infrastructure;
 using Nop.Web.Framework.Models;
 
 namespace Nop.Plugin.Payments.EscrowCom.Components;
+
 public class EscrowProductTypeViewComponent : NopViewComponent
 {
     #region Fields
@@ -52,15 +53,15 @@ public class EscrowProductTypeViewComponent : NopViewComponent
         if (!widgetZone.Equals(AdminWidgetZones.ProductDetailsBlock))
             return Content(string.Empty);
 
-        var itemType = await _genericAttributeService.GetAttributeAsync<Product, ItemType?>(entityModel.Id, EscrowDefaults.EscrowItemTypeAttribute)
+        var itemType = await _genericAttributeService
+            .GetAttributeAsync<Product, ItemType?>(entityModel.Id, EscrowDefaults.EscrowItemTypeAttribute)
             ?? ItemType.GeneralMerchandise;
 
         var model = new ItemTypeModel
         {
             EscrowItemType = itemType,
-            AvailableItemTypes = (await ItemType.GeneralMerchandise.ToSelectListAsync()).ToList()
+            AvailableItemTypes = (await ItemType.GeneralMerchandise.ToSelectListAsync(valuesToExclude: [(int)ItemType.ShippingFee])).ToList()
         };
-
 
         return View("~/Plugins/Payments.EscrowCom/Views/EscrowProductType/Default.cshtml", model);
     }

@@ -5,7 +5,23 @@
 /// </summary>
 public enum ItemType
 {
-    DomainName,
+    /// <summary>
+    /// General merchandise
+    /// </summary>
     GeneralMerchandise,
-    MotorVehicle
+
+    /// <summary>
+    /// Motor vehicle
+    /// </summary>
+    MotorVehicle,
+
+    /// <summary>
+    /// Domain name
+    /// </summary>
+    DomainName,
+
+    /// <summary>
+    /// Shipping fee
+    /// </summary>
+    ShippingFee
 }

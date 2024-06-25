@@ -5,7 +5,7 @@
   "Version": "4.70.1",
   "SupportedVersions": [ "4.70" ],
   "Author": "nopCommerce team",
-  "DisplayOrder": -1,
+  "DisplayOrder": 0,
   "FileName": "Nop.Plugin.Payments.EscrowCom.dll",
-  "Description": ""
+  "Description": "Escrow.com is the world’s most licensed online escrow provider catering to varying types of deals like domains, cars, luxury goods, IP address, etc. In e-commerce websites, Escrow.com recommends the use of their Escrow Pay product as the checkout solution."
 }
