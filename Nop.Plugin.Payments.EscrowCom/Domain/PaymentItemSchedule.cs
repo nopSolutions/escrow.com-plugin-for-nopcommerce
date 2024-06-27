@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents the way that is used for monetary amounts
 /// </summary>
-public class PaymentItemSchedule
+public record PaymentItemSchedule
 {
     /// <summary>
     /// Amount

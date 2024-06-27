@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a transaction item
 /// </summary>
-public class PaymentItem
+public record TransactionItem
 {
     /// <summary>
     /// A brief description of the item being transferred
@@ -13,7 +13,7 @@ public class PaymentItem
     /// <summary>
     /// Additional attributes relevant to an item
     /// </summary>
-    public ExtraAttributes ExtraAttributes { get; set; }
+    public Dictionary<string, string> ExtraAttributes { get; set; }
 
     /// <summary>
     /// The length of the inspection period in seconds.

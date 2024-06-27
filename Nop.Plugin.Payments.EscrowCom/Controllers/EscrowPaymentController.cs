@@ -2,6 +2,7 @@
 using Nop.Core.Domain.Directory;
 using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Plugin.Payments.EscrowCom.Models;
+using Nop.Plugin.Payments.EscrowCom.Services;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
@@ -21,6 +22,7 @@ public class EscrowPaymentController : BasePaymentController
     #region Fields
 
     private readonly CurrencySettings _currencySettings;
+    private readonly EscrowService _escrowService;
     private readonly EscrowSettings _escrowSettings;
     private readonly ICurrencyService _currencyService;
     private readonly ILocalizationService _localizationService;
@@ -33,6 +35,7 @@ public class EscrowPaymentController : BasePaymentController
     #region Ctor
 
     public EscrowPaymentController(CurrencySettings currencySettings,
+        EscrowService escrowService,
         EscrowSettings escrowSettings,
         ICurrencyService currencyService,
         ILocalizationService localizationService,
@@ -41,12 +44,29 @@ public class EscrowPaymentController : BasePaymentController
         ISettingService settingService)
     {
         _currencySettings = currencySettings;
+        _escrowService = escrowService;
         _escrowSettings = escrowSettings;
         _currencyService = currencyService;
         _localizationService = localizationService;
         _notificationService = notificationService;
         _permissionService = permissionService;
         _settingService = settingService;
+    }
+
+    #endregion
+
+    #region Utilities
+
+    private async Task<string> GetVerificationStatusAsync()
+    {
+        var account = await _escrowService.GetAccountInfoAsync();
+        if (account?.Verification is null)
+            return string.Empty;
+
+        var personalStatus = await _localizationService.GetLocalizedEnumAsync(account.Verification.Personal?.Status ?? VerificationStatus.NotVerified);
+        var companyStatus = await _localizationService.GetLocalizedEnumAsync(account.Verification.Company?.Status ?? VerificationStatus.NotVerified);
+
+        return $"Personal: {personalStatus} | Company: {companyStatus}";
     }
 
     #endregion
@@ -76,6 +96,11 @@ public class EscrowPaymentController : BasePaymentController
             _notificationService.WarningNotification(warning, false);
         }
 
+        if (_escrowService.IsConfigured())
+        {
+            model.Verification = await GetVerificationStatusAsync();
+        }
+
         return View("~/Plugins/Payments.EscrowCom/Views/Configure.cshtml", model);
     }
 
@@ -88,13 +113,26 @@ public class EscrowPaymentController : BasePaymentController
         if (!ModelState.IsValid)
             return await Configure();
 
-        //save settings
         _escrowSettings.Email = model.Email;
         _escrowSettings.ApiKey = model.ApiKey;
         _escrowSettings.UseSandbox = model.UseSandbox;
         _escrowSettings.FeePayer = model.FeePayer;
         _escrowSettings.InspectionPeriod = model.InspectionPeriod;
 
+        if (_escrowSettings.WebhookId == 0)
+        {
+            var webhook = await _escrowService.ConfigureWebhookAsync(_escrowSettings);
+
+            if (webhook?.Id is null)
+            {
+                _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.AccountConfiguration.Failed"));
+                return await Configure();
+            }
+
+            _escrowSettings.WebhookId = webhook.Id.Value;
+        }
+
+        //save settings if everything is ok
         _settingService.SaveSetting(_escrowSettings);
 
         _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));

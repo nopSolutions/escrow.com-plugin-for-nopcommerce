@@ -34,7 +34,22 @@ public class EscrowSettings : ISettings
     public FeePayer FeePayer { get; set; }
 
     /// <summary>
-    /// Gets or sets the group identifier with extra attributes
+    /// Gets or sets the group identifier with Vehicle extra attributes
     /// </summary>
-    public int EscrowSpecGroupId { get; set; }
+    public int EscrowVehicleSpecGroupId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the group identifier with domain name extra attributes
+    /// </summary>
+    public int EscrowDomainNameSpecGroupId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Escrow webhook identifier
+    /// </summary>
+    public int WebhookId { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the linked account is approved
+    /// </summary>
+    public bool IsApprovedAccount { get; set; }
 }

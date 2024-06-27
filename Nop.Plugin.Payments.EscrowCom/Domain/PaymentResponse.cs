@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a payment response
 /// </summary>
-public class PaymentResponse
+public record PaymentResponse
 {
     /// <summary>
     /// Gets the URL to which the buyer should be redirected

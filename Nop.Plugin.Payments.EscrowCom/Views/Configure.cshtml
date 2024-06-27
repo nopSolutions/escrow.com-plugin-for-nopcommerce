@@ -9,17 +9,29 @@
         <div class="card card-default">
             <div class="card-body">
                 <p>
-                    To configure the 2checkout plugin for nopCommerce.<br />
+                    To configure the Escrow.com plugin for nopCommerce.<br />
                     <br />
                     1. Create an account or log in to any of the <a href="https://www.escrow-sandbox.com/" target="_blank">Sandbox</a> or <a href="https://www.escrow.com" target="_blank">Production</a> websites.<br />
                     2. Find, copy and paste your Email Address below in the Email field.<br />
-                    3. On the main menu select "Account" then "Site Management".<br />
+                    3. Follow the "My Integrations" link in the main menu and then "API Keys" in the sidebar.<br />
                     4. Generate a new API Key and paste it into the API key field below.<br />
                     5. Save the configuration.<br />
                 </p>
                 <p>
                     <em>Notes:</em><br />
-                    For this plugin to work properly ensure that your primary store currency is supported by 2Checkout.<br />
+                    For this plugin to work properly ensure that your primary store currency is supported by Escrow.com.<br />
+                </p>
+
+                <p>
+                    For the Motor vehicle product type, Escrow.com requires the following specification attributes to be passed: Make, Model and Year.
+                    <br />
+                    Additionally, you can specify VIN, Odometer and Title Collection Service specification attributes. <b>If you use unique values ​​for the product (such as VIN and Odometer) you have to limit stock quantity to 1</b>
+                </p>
+                <p>
+                    For Domain name product type you can specify the following additional specification attributes: Lien Payoff Service, Domain Concierge Service, With Content
+                </p>
+                <p>
+                    All required specification attributes will be created after installing the plugin.
                 </p>
                 <div class="form-group row">
                     <div class="col-md-3">
@@ -69,6 +81,23 @@
                 <div class="form-group row">
                     <div class="col-md-9 offset-md-3">
                         <button type="submit" name="save" class="btn btn-primary">@T("Admin.Common.Save")</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card card-default">
+            <div class="card-header clearfix">
+                @T("Plugins.Payments.EscrowCom")
+            </div>
+            <div class="card-body">
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-label asp-for="Verification" />
+                    </div>
+                    <div class="col-md-9">
+                        <div class="form-text-row">
+                            @Model.Verification
+                        </div>
                     </div>
                 </div>
             </div>

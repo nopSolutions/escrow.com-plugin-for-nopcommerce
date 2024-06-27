@@ -3,6 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Net.Http.Headers;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
@@ -14,6 +17,7 @@ using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Media;
 using Nop.Services.Orders;
@@ -32,6 +36,7 @@ public class EscrowService
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         NumberHandling = JsonNumberHandling.AllowReadingFromString | JsonNumberHandling.WriteAsString,
+        DictionaryKeyPolicy = JsonNamingPolicy.SnakeCaseLower,
         Converters =
         {
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)
@@ -41,9 +46,11 @@ public class EscrowService
     private readonly CurrencySettings _currencySettings;
     private readonly EscrowSettings _escrowSettings;
     private readonly HttpClient _httpClient;
+    private readonly IActionContextAccessor _actionContextAccessor;
     private readonly ICurrencyService _currencyService;
     private readonly ICustomerService _customerService;
     private readonly IGenericAttributeService _genericAttributeService;
+    private readonly ILocalizationService _localizationService;
     private readonly ILogger _logger;
     private readonly INopUrlHelper _nopUrlHelper;
     private readonly IOrderProcessingService _orderProcessingService;
@@ -52,6 +59,7 @@ public class EscrowService
     private readonly IProductService _productService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
     private readonly IStoreService _storeService;
+    private readonly IUrlHelperFactory _urlHelperFactory;
     private readonly IUrlRecordService _urlRecordService;
     private readonly IWebHelper _webHelper;
 
@@ -62,9 +70,11 @@ public class EscrowService
     public EscrowService(CurrencySettings currencySettings,
         EscrowSettings escrowSettings,
         HttpClient httpClient,
+        IActionContextAccessor actionContextAccessor,
         ICurrencyService currencyService,
         ICustomerService customerService,
         IGenericAttributeService genericAttributeService,
+        ILocalizationService localizationService,
         ILogger logger,
         INopUrlHelper nopUrlHelper,
         IOrderProcessingService orderProcessingService,
@@ -73,15 +83,18 @@ public class EscrowService
         IProductService productService,
         ISpecificationAttributeService specificationAttributeService,
         IStoreService storeService,
+        IUrlHelperFactory urlHelperFactory,
         IUrlRecordService urlRecordService,
         IWebHelper webHelper)
     {
         _currencySettings = currencySettings;
         _escrowSettings = escrowSettings;
         _httpClient = httpClient;
+        _actionContextAccessor = actionContextAccessor;
         _currencyService = currencyService;
         _customerService = customerService;
         _genericAttributeService = genericAttributeService;
+        _localizationService = localizationService;
         _logger = logger;
         _nopUrlHelper = nopUrlHelper;
         _orderProcessingService = orderProcessingService;
@@ -90,6 +103,7 @@ public class EscrowService
         _productService = productService;
         _specificationAttributeService = specificationAttributeService;
         _storeService = storeService;
+        _urlHelperFactory = urlHelperFactory;
         _urlRecordService = urlRecordService;
         _webHelper = webHelper;
     }
@@ -99,16 +113,42 @@ public class EscrowService
     #region Utilities
 
     /// <summary>
+    /// Fill the passed dictionary with extra attributes
+    /// </summary>
+    /// <param name="productId">Product identifier</param>
+    /// <param name="specGroupId">The specification attribute group identifier</param>
+    /// <param name="extraAttributes">The dictionary for extra attributes</param>
+    /// A task that represents the asynchronous operation
+    /// </returns>
+    private async Task AddExtraAttributesAsync(int productId, int specGroupId, Dictionary<string, string> extraAttributes)
+    {
+        var attrs = await _specificationAttributeService.GetSpecificationAttributesByGroupIdAsync(specGroupId);
+        foreach (var attr in attrs)
+        {
+            var option = (await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(attr.Id))?.FirstOrDefault();
+
+            if (option is null)
+                continue;
+
+            var psa = (await _specificationAttributeService.GetProductSpecificationAttributesAsync(productId, specificationAttributeOptionId: option.Id))?.FirstOrDefault();
+
+            if (string.IsNullOrEmpty(psa?.CustomValue))
+                continue;
+
+            extraAttributes.Add(attr.Name, psa?.CustomValue);
+        }
+    }
+
+    /// <summary>
     /// Configure HTTP client for work 
     /// </summary>
-    private void EnsureHttpClient()
+    private void EnsureHttpClient(EscrowSettings escrowSettings = null)
     {
-        if (!IsConfigured())
-            throw new NopException("Escrow.com plugin is not configured");
+        escrowSettings ??= _escrowSettings;
 
         if (!_httpClient.DefaultRequestHeaders.Contains(HeaderNames.Authorization))
         {
-            var auth = Encoding.ASCII.GetBytes($"{_escrowSettings.Email}:{_escrowSettings.ApiKey}");
+            var auth = Encoding.ASCII.GetBytes($"{escrowSettings.Email}:{escrowSettings.ApiKey}");
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(auth));
         }
 
@@ -155,6 +195,9 @@ public class EscrowService
     {
         try
         {
+            if (!IsConfigured())
+                throw new NopException("Escrow.com plugin is not configured");
+
             var customer = await _customerService.GetCustomerByIdAsync(order.CustomerId);
             var store = await _storeService.GetStoreByIdAsync(order.StoreId);
             var currency = await _currencyService.GetCurrencyByIdAsync(_currencySettings.PrimaryStoreCurrencyId);
@@ -164,7 +207,7 @@ public class EscrowService
 
             //products
             var orderItems = await _orderService.GetOrderItemsAsync(order.Id);
-            var paymentItems = new List<PaymentItem>();
+            var paymentItems = new List<TransactionItem>();
             foreach (var item in orderItems)
             {
                 var product = await _productService.GetProductByIdAsync(item.ProductId);
@@ -174,37 +217,18 @@ public class EscrowService
                 var imageUrl = (await _pictureService.GetPictureUrlAsync(itemPicture)).Url;
                 var itemType = await _genericAttributeService.GetAttributeAsync<ItemType?>(product, EscrowDefaults.EscrowItemTypeAttribute)
                     ?? ItemType.GeneralMerchandise;
-                var extraAttributes = new ExtraAttributes { ImageUrl = imageUrl, MerchantUrl = productUrl };
+
+                var extraAttributes = new Dictionary<string, string>()
+                {
+                    ["image_url"] = imageUrl,
+                    ["merchant_url"] = productUrl
+                };
+
                 if (itemType == ItemType.DomainName)
-                {
-                    extraAttributes = new DomainNameExtraAttributes(extraAttributes);
+                    await AddExtraAttributesAsync(product.Id, _escrowSettings.EscrowDomainNameSpecGroupId, extraAttributes);
 
-                    //get product attributes
-                };
                 if (itemType == ItemType.MotorVehicle)
-                {
-                    extraAttributes = new MotorVehicleExtraAttributes(extraAttributes);
-
-                    //get product attributes
-
-                    //get specification attributes
-
-                    var attrs = await _specificationAttributeService.GetSpecificationAttributesByGroupIdAsync(_escrowSettings.EscrowSpecGroupId);
-                    foreach (var attr in attrs)
-                    {
-                        var option = (await _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttributeAsync(attr.Id))?.FirstOrDefault();
-
-                        if (option is null)
-                            continue;
-
-                        var psa = (await _specificationAttributeService.GetProductSpecificationAttributesAsync(product.Id, specificationAttributeOptionId: option.Id))?.FirstOrDefault();
-
-                        if (string.IsNullOrEmpty(psa?.CustomValue))
-                            continue;
-
-                        extraAttributes.Add(attr.Name, psa?.CustomValue);
-                    }
-                };
+                    await AddExtraAttributesAsync(product.Id, _escrowSettings.EscrowVehicleSpecGroupId, extraAttributes);
 
                 paymentItems.Add(new()
                 {
@@ -243,7 +267,7 @@ public class EscrowService
             //prepare request parameters
             var request = new PaymentRequest
             {
-                Currency = currency.CurrencyCode,
+                Currency = currency.CurrencyCode.ToLower(),
                 Description = CommonHelper.EnsureMaximumLength($"Transaction for order #{order.OrderGuid} in '{store.Name}'", 256),
                 Reference = order.OrderGuid.ToString(),
                 ReturnUrl = returnUrl,
@@ -301,6 +325,84 @@ public class EscrowService
     }
 
     /// <summary>
+    /// Create a webhook on escrow.com
+    /// </summary>
+    /// <param name="escrowSettings">Plugin settings</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation
+    /// The task result contains information about the created webhook
+    /// </returns>
+    public async Task<Webhook> ConfigureWebhookAsync(EscrowSettings escrowSettings)
+    {
+        EnsureHttpClient(escrowSettings);
+
+        //execute request and get response
+        var apiHost = escrowSettings.UseSandbox ? EscrowDefaults.ApiHost.Sandbox : EscrowDefaults.ApiHost.Production;
+
+        //generate the relative URL
+        var urlHelper = _urlHelperFactory.GetUrlHelper(_actionContextAccessor.ActionContext);
+        var webhookUrl = urlHelper.RouteUrl(EscrowDefaults.WebhookRouteName, null, protocol: _webHelper.GetCurrentRequestProtocol());
+
+        var requestMessage = new HttpRequestMessage
+        {
+            RequestUri = new Uri($"{apiHost}/2017-09-01/customer/me/webhook"),
+            Method = HttpMethod.Post,
+            Content = new StringContent(JsonSerializer.Serialize(new Webhook { Url = webhookUrl }, _serializerOptions), Encoding.UTF8, MimeTypes.ApplicationJson)
+        };
+
+        var httpResponse = await _httpClient.SendAsync(requestMessage);
+
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            var responseContent = await httpResponse.Content.ReadAsStringAsync();
+            throw new HttpRequestException(responseContent, null, httpResponse.StatusCode);
+        }
+
+        //return result
+        using var responseStream = await httpResponse.Content.ReadAsStreamAsync();
+        var result = await JsonSerializer.DeserializeAsync<Webhook>(responseStream, _serializerOptions);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Get escrow.com account information
+    /// </summary>
+    /// <returns>
+    /// A task that represents the asynchronous operation
+    /// The task result contains the Escrow account information
+    /// </returns>
+    public async Task<AccountInfo> GetAccountInfoAsync()
+    {
+        //ensure that plugin is configured
+        if (!IsConfigured())
+            return null;
+
+        //execute request and get response
+        var apiHost = _escrowSettings.UseSandbox ? EscrowDefaults.ApiHost.Sandbox : EscrowDefaults.ApiHost.Production;
+
+        var requestMessage = new HttpRequestMessage
+        {
+            RequestUri = new Uri($"{apiHost}/2017-09-01/customer/me"),
+            Method = HttpMethod.Get
+        };
+
+        EnsureHttpClient();
+
+        var response = await _httpClient.SendAsync(requestMessage);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        //return result
+        using var responseStream = await response.Content.ReadAsStreamAsync();
+        var result = await JsonSerializer.DeserializeAsync<AccountInfo>(responseStream, _serializerOptions);
+
+        return result;
+    }
+
+
+    /// <summary>
     /// Handle webhook request
     /// </summary>
     /// <param name="settings">Plugin settings</param>
@@ -345,7 +447,7 @@ public class EscrowService
 
         //return result
         using var responseStream = await response.Content.ReadAsStreamAsync();
-        var result = await JsonSerializer.DeserializeAsync<Transaction>(responseStream, _serializerOptions);
+        var result = await JsonSerializer.DeserializeAsync<TransactionInfo>(responseStream, _serializerOptions);
 
         if (!Guid.TryParse(result.Reference, out var orderGuid))
             return;
@@ -358,10 +460,8 @@ public class EscrowService
 
             switch (eventResult.Event)
             {
-                case WebhookTrigger.PartyVerificationApproved:
-                    order.OrderStatus = OrderStatus.Processing;
-                    await _orderService.UpdateOrderAsync(order);
-                    note = "Escrow.com has approved the verification submission";
+                case WebhookTrigger.CustomerVerificationApproved:
+                    _escrowSettings.IsApprovedAccount = true;
                     break;
                 case WebhookTrigger.PaymentApproved:
                     await _orderProcessingService.MarkOrderAsPaidAsync(order);
@@ -393,13 +493,45 @@ public class EscrowService
     }
 
     /// <summary>
+    /// Remove linked webhook
+    /// </summary>
+    /// <returns>A task that represents the asynchronous operation</returns>
+    public async Task RemoveWebhookAsync()
+    {
+        if (_escrowSettings.WebhookId == 0)
+            return;
+
+        if (!IsConfigured())
+            throw new NopException("Escrow.com plugin is not configured");
+
+        EnsureHttpClient();
+
+        //execute request and get response
+        var apiHost = _escrowSettings.UseSandbox ? EscrowDefaults.ApiHost.Sandbox : EscrowDefaults.ApiHost.Production;
+
+        var requestMessage = new HttpRequestMessage
+        {
+            RequestUri = new Uri($"{apiHost}/2017-09-01/customer/me/webhook/{_escrowSettings.WebhookId}"),
+            Method = HttpMethod.Delete
+        };
+
+        var httpResponse = await _httpClient.SendAsync(requestMessage);
+
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            var responseContent = await httpResponse.Content.ReadAsStringAsync();
+            throw new HttpRequestException(responseContent, null, httpResponse.StatusCode);
+        }
+    }
+
+    /// <summary>
     /// Check whether the plugin is configured
     /// </summary>
     /// <returns>Result</returns>
     public bool IsConfigured()
     {
         //email and API key are required to request services
-        return !string.IsNullOrEmpty(_escrowSettings.Email) && !string.IsNullOrEmpty(_escrowSettings.ApiKey);
+        return !string.IsNullOrEmpty(_escrowSettings.Email) && !string.IsNullOrEmpty(_escrowSettings.ApiKey) && _escrowSettings.WebhookId != 0;
     }
 
     #endregion

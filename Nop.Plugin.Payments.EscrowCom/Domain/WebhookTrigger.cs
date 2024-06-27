@@ -119,5 +119,10 @@ public enum WebhookTrigger
     /// <summary>
     /// This is sent when Escrow.com has rejected to process a refund for the transaction
     /// </summary>
-    RefundRejected
+    RefundRejected,
+
+    /// <summary>
+    /// Escrow.com has approved the verification submission of the merchant linked to the plugin
+    /// </summary>
+    CustomerVerificationApproved
 }

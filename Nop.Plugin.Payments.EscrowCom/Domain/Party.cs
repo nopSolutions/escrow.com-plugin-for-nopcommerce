@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a customer that is part of a transaction and their status in the transaction
 /// </summary>
-public class Party
+public record Party
 {
     /// <summary>
     /// The email address of the party. You may also pass the value 'me' if the party object is representing the store account

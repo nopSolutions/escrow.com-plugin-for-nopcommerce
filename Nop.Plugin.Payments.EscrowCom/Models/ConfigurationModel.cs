@@ -30,4 +30,7 @@ public record ConfigurationModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.FeePayer")]
     public FeePayer FeePayer { get; set; }
     public static List<SelectListItem> AvailableFeePayers => FeePayer.Buyer.ToSelectListAsync().Result?.ToList() ?? new();
+
+    [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.Verification")]
+    public string Verification { get; set; }
 }

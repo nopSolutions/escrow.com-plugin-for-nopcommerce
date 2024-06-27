@@ -1,6 +1,6 @@
 ﻿namespace Nop.Plugin.Payments.EscrowCom.Domain;
 
-public class PaymentFee
+public record PaymentFee
 {
     #region Fields
 

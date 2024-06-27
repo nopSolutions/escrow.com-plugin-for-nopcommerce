@@ -74,20 +74,20 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
 
     #region Utilities
 
-    private async Task<int> CreateEscrowAttributesAsync()
+    private async Task<int> CreateEscrowAttributesAsync(string groupName, Dictionary<string, string> specifications)
     {
-        var newGroup = new SpecificationAttributeGroup { Name = EscrowDefaults.EscrowSpecificationAttributeGroupName };
-        await _specificationAttributeGroupRepository.InsertAsync(newGroup);
+        var domainGroup = new SpecificationAttributeGroup { Name = groupName };
+        await _specificationAttributeGroupRepository.InsertAsync(domainGroup);
 
-        foreach (var name in EscrowDefaults.ExtraAttributeNames)
+        foreach (var (name, title) in specifications)
         {
-            var newSpec = new SpecificationAttribute { Name = name, SpecificationAttributeGroupId = newGroup.Id };
+            var newSpec = new SpecificationAttribute { Name = title, SpecificationAttributeGroupId = domainGroup.Id };
             await _specificationAttributeRepository.InsertAsync(newSpec);
 
             await _specificationAttributeOptionRepository.InsertAsync(new SpecificationAttributeOption { Name = name, SpecificationAttributeId = newSpec.Id });
         }
 
-        return newGroup.Id;
+        return domainGroup.Id;
     }
 
     private async Task DeleteEscrowAttributesAsync(int groupId)
@@ -331,11 +331,13 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     /// <returns>A task that represents the asynchronous operation</returns>
     public override async Task InstallAsync()
     {
-        var attrGroupId = await CreateEscrowAttributesAsync();
+        var vehicleGroupId = await CreateEscrowAttributesAsync("Vehicle specifications", EscrowDefaults.MotorVehicleExtraAttributeNames);
+        var domainNameGroupId = await CreateEscrowAttributesAsync("Domain name specifications", EscrowDefaults.DomainExtraAttributeNames);
 
         await _settingService.SaveSettingAsync(new EscrowSettings
         {
-            EscrowSpecGroupId = attrGroupId,
+            EscrowVehicleSpecGroupId = vehicleGroupId,
+            EscrowDomainNameSpecGroupId = domainNameGroupId,
             FeePayer = Domain.FeePayer.Buyer,
             UseSandbox = true,
             InspectionPeriod = 1
@@ -370,6 +372,8 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             ["Plugins.Payments.EscrowCom.Fields.InspectionPeriod.Invalid"] = "Inspection period should be in range 1 to 30",
             ["Plugins.Payments.EscrowCom.Fields.FeePayer"] = "Who will pay the fee?",
             ["Plugins.Payments.EscrowCom.Fields.FeePayer.Hint"] = "Choose the party who will pay the fee.",
+            ["Plugins.Payments.EscrowCom.Fields.Verification"] = "Verification",
+            ["Plugins.Payments.EscrowCom.Fields.Verification.Hint"] = "The KYC verification statuses on Escrow.com",
             ["Plugins.Payments.EscrowCom.ItemType"] = "Escrow item type",
             ["Plugins.Payments.EscrowCom.ItemType.Hint"] = "The item type - can affect behaviour of the transaction and can also be used to specify party-specific fees.",
             ["Plugins.Payments.EscrowCom.PaymentMethodDescription"] = "You will be redirected to Escrow.com to complete the order.",
@@ -381,6 +385,10 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.GeneralMerchandise"] = "General merchandise",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.MotorVehicle"] = "Motor vehicle",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.DomainName"] = "Domain name",
+
+
+            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.VerificationStatus.Verified"] = "Verified",
+            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.VerificationStatus.NotVerified"] = "Not verified",
         });
 
         await base.InstallAsync();
@@ -398,7 +406,10 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             await _settingService.SaveSettingAsync(_paymentSettings);
         }
 
-        await DeleteEscrowAttributesAsync(_escrowSettings.EscrowSpecGroupId);
+        await _escrowService.RemoveWebhookAsync();
+
+        await DeleteEscrowAttributesAsync(_escrowSettings.EscrowVehicleSpecGroupId);
+        await DeleteEscrowAttributesAsync(_escrowSettings.EscrowDomainNameSpecGroupId);
 
         await _settingService.DeleteSettingAsync<EscrowSettings>();
 

@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a payment requst
 /// </summary>
-public class PaymentRequest
+public record PaymentRequest
 {
     /// <summary>
     /// The currency for the transaction
@@ -17,7 +17,7 @@ public class PaymentRequest
 
     /// <summary>
     /// The external reference for the transaction you want to get the details of.
-    /// Here we will store the order number
+    /// Here we will store the order GUID
     /// </summary>
     public string Reference { get; set; }
 
@@ -29,7 +29,7 @@ public class PaymentRequest
     /// <summary>
     /// The items of the transaction
     /// </summary>
-    public PaymentItem[] Items { get; set; }
+    public TransactionItem[] Items { get; set; }
 
     /// <summary>
     /// The array of parties involved in the transaction

@@ -53,5 +53,23 @@ public class EscrowDefaults
     /// <summary>
     /// Gets the names of Escrow extra attributes
     /// </summary>
-    public static string[] ExtraAttributeNames => ["vin", "odometer", "year", "make", "model", "title_collection", "lien_holder_payoff", "with_content", "concierge"];
+    public static Dictionary<string, string> DomainExtraAttributeNames => new()
+    {
+        ["lien_holder_payoff"] = "Lien Payoff Service",
+        ["with_content"] = "With Content",
+        ["concierge"] = "Domain Concierge Service"
+    };
+
+    /// <summary>
+    /// Gets the names of Escrow extra attributes
+    /// </summary>
+    public static Dictionary<string, string> MotorVehicleExtraAttributeNames => new()
+    {
+        ["vin"] = "VIN",
+        ["odometer"] = "Odometer",
+        ["year"] = "Year",
+        ["make"] = "Make",
+        ["model"] = "Model",
+        ["title_collection"] = "Title Collection Service"
+    };
 }
