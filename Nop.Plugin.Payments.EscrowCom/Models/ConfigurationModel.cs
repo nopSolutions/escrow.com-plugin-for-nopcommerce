@@ -33,4 +33,6 @@ public record ConfigurationModel : BaseNopModel
 
     [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.Verification")]
     public string Verification { get; set; }
+
+    public bool IsConfigured { get; set; }
 }

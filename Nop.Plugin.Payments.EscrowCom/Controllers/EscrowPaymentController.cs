@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Nop.Core.Caching;
 using Nop.Core.Domain.Directory;
 using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Plugin.Payments.EscrowCom.Models;
@@ -84,7 +85,8 @@ public class EscrowPaymentController : BasePaymentController
             ApiKey = _escrowSettings.ApiKey,
             UseSandbox = _escrowSettings.UseSandbox,
             FeePayer = _escrowSettings.FeePayer,
-            InspectionPeriod = _escrowSettings.InspectionPeriod
+            InspectionPeriod = _escrowSettings.InspectionPeriod,
+            IsConfigured = _escrowService.IsConfigured()
         };
 
         //check currency

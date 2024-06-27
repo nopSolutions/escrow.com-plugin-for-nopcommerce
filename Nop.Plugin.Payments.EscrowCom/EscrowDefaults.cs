@@ -1,4 +1,6 @@
-﻿namespace Nop.Plugin.Payments.EscrowCom;
+﻿using Nop.Core.Caching;
+
+namespace Nop.Plugin.Payments.EscrowCom;
 
 /// <summary>
 /// Represents plugin constants
@@ -72,4 +74,9 @@ public class EscrowDefaults
         ["model"] = "Model",
         ["title_collection"] = "Title Collection Service"
     };
+
+    /// <summary>
+    /// Gets the cache key for the escrow account info
+    /// </summary>
+    public static CacheKey EscrowAccountInfoCacheKey => new("Nop.EscrowCom.EscrowAccountInfoCacheKey") { CacheTime = 5 };
 }

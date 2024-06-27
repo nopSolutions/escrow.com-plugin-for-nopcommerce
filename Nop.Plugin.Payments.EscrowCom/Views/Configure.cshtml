@@ -85,6 +85,8 @@
                 </div>
             </div>
         </div>
+        @if (Model.IsConfigured)
+        {
         <div class="card card-default">
             <div class="card-header clearfix">
                 @T("Plugins.Payments.EscrowCom")
@@ -102,5 +104,6 @@
                 </div>
             </div>
         </div>
+        }
     </div>
 </form>

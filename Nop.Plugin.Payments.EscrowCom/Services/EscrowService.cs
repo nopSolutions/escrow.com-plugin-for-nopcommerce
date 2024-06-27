@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Net.Http.Headers;
 using Nop.Core;
+using Nop.Core.Caching;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
@@ -58,6 +59,7 @@ public class EscrowService
     private readonly IPictureService _pictureService;
     private readonly IProductService _productService;
     private readonly ISpecificationAttributeService _specificationAttributeService;
+    private readonly IStaticCacheManager _staticCacheManager;
     private readonly IStoreService _storeService;
     private readonly IUrlHelperFactory _urlHelperFactory;
     private readonly IUrlRecordService _urlRecordService;
@@ -82,6 +84,7 @@ public class EscrowService
         IPictureService pictureService,
         IProductService productService,
         ISpecificationAttributeService specificationAttributeService,
+        IStaticCacheManager staticCacheManager,
         IStoreService storeService,
         IUrlHelperFactory urlHelperFactory,
         IUrlRecordService urlRecordService,
@@ -102,6 +105,7 @@ public class EscrowService
         _pictureService = pictureService;
         _productService = productService;
         _specificationAttributeService = specificationAttributeService;
+        _staticCacheManager = staticCacheManager;
         _storeService = storeService;
         _urlHelperFactory = urlHelperFactory;
         _urlRecordService = urlRecordService;
@@ -378,27 +382,31 @@ public class EscrowService
         if (!IsConfigured())
             return null;
 
-        //execute request and get response
-        var apiHost = _escrowSettings.UseSandbox ? EscrowDefaults.ApiHost.Sandbox : EscrowDefaults.ApiHost.Production;
-
-        var requestMessage = new HttpRequestMessage
+        return await _staticCacheManager.GetAsync(EscrowDefaults.EscrowAccountInfoCacheKey, async () =>
         {
-            RequestUri = new Uri($"{apiHost}/2017-09-01/customer/me"),
-            Method = HttpMethod.Get
-        };
+            //execute request and get response
+            var apiHost = _escrowSettings.UseSandbox ? EscrowDefaults.ApiHost.Sandbox : EscrowDefaults.ApiHost.Production;
 
-        EnsureHttpClient();
+            var requestMessage = new HttpRequestMessage
+            {
+                RequestUri = new Uri($"{apiHost}/2017-09-01/customer/me"),
+                Method = HttpMethod.Get
+            };
 
-        var response = await _httpClient.SendAsync(requestMessage);
+            EnsureHttpClient();
 
-        if (!response.IsSuccessStatusCode)
-            return null;
+            var response = await _httpClient.SendAsync(requestMessage);
 
-        //return result
-        using var responseStream = await response.Content.ReadAsStreamAsync();
-        var result = await JsonSerializer.DeserializeAsync<AccountInfo>(responseStream, _serializerOptions);
+            if (!response.IsSuccessStatusCode)
+                return null;
 
-        return result;
+            //return result
+            using var responseStream = await response.Content.ReadAsStreamAsync();
+            var result = await JsonSerializer.DeserializeAsync<AccountInfo>(responseStream, _serializerOptions);
+
+            return result;
+
+        });
     }
 
 
