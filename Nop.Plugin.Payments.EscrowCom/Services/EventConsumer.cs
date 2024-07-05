@@ -44,7 +44,7 @@ public class EventConsumer :
     /// <returns>A task that represents the asynchronous operation</returns>
     public async Task HandleEventAsync(EntityUpdatedEvent<Product> eventMessage)
     {
-        //ensure that Avalara tax provider is active
+        //ensure that plugin is active
         if (!await _pluginManager.IsPluginActiveAsync(EscrowDefaults.SystemName))
             return;
 

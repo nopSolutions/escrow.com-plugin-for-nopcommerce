@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Nop.Core.Caching;
 using Nop.Core.Domain.Directory;
 using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Plugin.Payments.EscrowCom.Models;
@@ -98,10 +97,8 @@ public class EscrowPaymentController : BasePaymentController
             _notificationService.WarningNotification(warning, false);
         }
 
-        if (_escrowService.IsConfigured())
-        {
+        if (model.IsConfigured)
             model.Verification = await GetVerificationStatusAsync();
-        }
 
         return View("~/Plugins/Payments.EscrowCom/Views/Configure.cshtml", model);
     }
@@ -127,7 +124,8 @@ public class EscrowPaymentController : BasePaymentController
 
             if (webhook?.Id is null)
             {
-                _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.AccountConfiguration.Failed"));
+                var locale = await _localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.AccountConfiguration.Failed");
+                _notificationService.ErrorNotification(string.Format(locale, Url.Action("List", "Log")), false);
                 return await Configure();
             }
 

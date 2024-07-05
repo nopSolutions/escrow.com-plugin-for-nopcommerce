@@ -76,27 +76,27 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
 
     private async Task<int> CreateEscrowAttributesAsync(string groupName, Dictionary<string, string> specifications)
     {
-        var domainGroup = new SpecificationAttributeGroup { Name = groupName };
-        await _specificationAttributeGroupRepository.InsertAsync(domainGroup);
+        var group = new SpecificationAttributeGroup { Name = groupName };
+        await _specificationAttributeGroupRepository.InsertAsync(group);
 
         foreach (var (name, title) in specifications)
         {
-            var newSpec = new SpecificationAttribute { Name = title, SpecificationAttributeGroupId = domainGroup.Id };
+            var newSpec = new SpecificationAttribute { Name = title, SpecificationAttributeGroupId = group.Id };
             await _specificationAttributeRepository.InsertAsync(newSpec);
 
-            await _specificationAttributeOptionRepository.InsertAsync(new SpecificationAttributeOption { Name = name, SpecificationAttributeId = newSpec.Id });
+            //set 'Yes' option for boolean attributes and 'Sample text' for string attributes
+            var optionName = name == "with_content" || name == "concierge" || name == "title_collection" || name == "lien_holder_payoff"
+                ? "Yes"
+                : "Sample text";
+            await _specificationAttributeOptionRepository.InsertAsync(new SpecificationAttributeOption { Name = optionName, SpecificationAttributeId = newSpec.Id });
         }
 
-        return domainGroup.Id;
+        return group.Id;
     }
 
     private async Task DeleteEscrowAttributesAsync(int groupId)
     {
-        if (groupId == 0)
-            return;
-
         var specGroup = await _specificationAttributeGroupRepository.GetByIdAsync(groupId);
-
         if (specGroup is null)
             return;
 
@@ -331,8 +331,8 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
     /// <returns>A task that represents the asynchronous operation</returns>
     public override async Task InstallAsync()
     {
-        var vehicleGroupId = await CreateEscrowAttributesAsync("Vehicle specifications", EscrowDefaults.MotorVehicleExtraAttributeNames);
-        var domainNameGroupId = await CreateEscrowAttributesAsync("Domain name specifications", EscrowDefaults.DomainExtraAttributeNames);
+        var vehicleGroupId = await CreateEscrowAttributesAsync(EscrowDefaults.MotorVehicleExtraAttributes.Name, EscrowDefaults.MotorVehicleExtraAttributes.Attributes);
+        var domainNameGroupId = await CreateEscrowAttributesAsync(EscrowDefaults.DomainExtraAttributes.Name, EscrowDefaults.DomainExtraAttributes.Attributes);
 
         await _settingService.SaveSettingAsync(new EscrowSettings
         {
@@ -340,7 +340,8 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             EscrowDomainNameSpecGroupId = domainNameGroupId,
             FeePayer = Domain.FeePayer.Buyer,
             UseSandbox = true,
-            InspectionPeriod = 1
+            InspectionPeriod = 1,
+            IsApprovedAccount = false
         });
 
         if (!_paymentSettings.ActivePaymentMethodSystemNames.Contains(EscrowDefaults.SystemName))
@@ -358,6 +359,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
         {
             ["Plugins.Payments.EscrowCom"] = "Escrow.com",
+            ["Plugins.Payments.EscrowCom.AccountConfiguration.Failed"] = "Plugin configuration failed (see details in the <a href=\"{0}\" target=\"_blank\">log</a>)",
             ["Plugins.Payments.EscrowCom.Currency.Warning"] = "The <a href=\"{1}\" target=\"_blank\">primary store currency</a> ({0}) is not supported by Escrow.com. Currently the only currencies that are supported are USD, EUR, AUD, GBP, CAD.",
             ["Plugins.Payments.EscrowCom.Fields.ApiKey"] = "API key",
             ["Plugins.Payments.EscrowCom.Fields.ApiKey.Hint"] = "Escrow API key. API keys are specific to an environment, so you may not use a sandbox API key in production or a production API key in sandbox.",
@@ -372,8 +374,8 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             ["Plugins.Payments.EscrowCom.Fields.InspectionPeriod.Invalid"] = "Inspection period should be in range 1 to 30",
             ["Plugins.Payments.EscrowCom.Fields.FeePayer"] = "Who will pay the fee?",
             ["Plugins.Payments.EscrowCom.Fields.FeePayer.Hint"] = "Choose the party who will pay the fee.",
-            ["Plugins.Payments.EscrowCom.Fields.Verification"] = "Verification",
-            ["Plugins.Payments.EscrowCom.Fields.Verification.Hint"] = "The KYC verification statuses on Escrow.com",
+            ["Plugins.Payments.EscrowCom.Fields.Verification"] = "Verification status",
+            ["Plugins.Payments.EscrowCom.Fields.Verification.Hint"] = "The KYC verification status on Escrow.com.",
             ["Plugins.Payments.EscrowCom.ItemType"] = "Escrow item type",
             ["Plugins.Payments.EscrowCom.ItemType.Hint"] = "The item type - can affect behaviour of the transaction and can also be used to specify party-specific fees.",
             ["Plugins.Payments.EscrowCom.PaymentMethodDescription"] = "You will be redirected to Escrow.com to complete the order.",
@@ -385,7 +387,6 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.GeneralMerchandise"] = "General merchandise",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.MotorVehicle"] = "Motor vehicle",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.ItemType.DomainName"] = "Domain name",
-
 
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.VerificationStatus.Verified"] = "Verified",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.VerificationStatus.NotVerified"] = "Not verified",

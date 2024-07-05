@@ -1,6 +1,4 @@
-﻿using Nop.Core.Caching;
-
-namespace Nop.Plugin.Payments.EscrowCom;
+﻿namespace Nop.Plugin.Payments.EscrowCom;
 
 /// <summary>
 /// Represents plugin constants
@@ -38,45 +36,30 @@ public class EscrowDefaults
     public static (string Sandbox, string Production) ApiHost => ("https://api.escrow-sandbox.com", "https://api.escrow.com");
 
     /// <summary>
-    /// Gets the Escrow Pay API Endpoint
-    /// </summary>
-    public static string PayPath => $"/integration/pay/2018-03-31";
-
-    /// <summary>
     /// Gets the name of the generic attribute that is used to store the Escrow item type
     /// </summary>
     public static string EscrowItemTypeAttribute => "EscrowItemType";
 
     /// <summary>
-    /// Gets the group name for extra attributes
-    /// </summary>
-    public static string EscrowSpecificationAttributeGroupName => "Escrow extra attributes";
-
-    /// <summary>
     /// Gets the names of Escrow extra attributes
     /// </summary>
-    public static Dictionary<string, string> DomainExtraAttributeNames => new()
+    public static (string Name, Dictionary<string, string> Attributes) DomainExtraAttributes => ("Domain name specifications", new ()
     {
-        ["lien_holder_payoff"] = "Lien Payoff Service",
         ["with_content"] = "With Content",
         ["concierge"] = "Domain Concierge Service"
-    };
+    });
 
     /// <summary>
     /// Gets the names of Escrow extra attributes
     /// </summary>
-    public static Dictionary<string, string> MotorVehicleExtraAttributeNames => new()
+    public static (string Name, Dictionary<string, string> Attributes) MotorVehicleExtraAttributes => ("Vehicle specifications", new()
     {
         ["vin"] = "VIN",
         ["odometer"] = "Odometer",
         ["year"] = "Year",
         ["make"] = "Make",
         ["model"] = "Model",
-        ["title_collection"] = "Title Collection Service"
-    };
-
-    /// <summary>
-    /// Gets the cache key for the escrow account info
-    /// </summary>
-    public static CacheKey EscrowAccountInfoCacheKey => new("Nop.EscrowCom.EscrowAccountInfoCacheKey") { CacheTime = 5 };
+        ["title_collection"] = "Title Collection Service",
+        ["lien_holder_payoff"] = "Lien Payoff Service",
+    });
 }
