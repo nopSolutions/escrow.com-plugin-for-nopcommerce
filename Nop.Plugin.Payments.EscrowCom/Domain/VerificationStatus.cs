@@ -18,5 +18,10 @@ public enum VerificationStatus
     /// <summary>
     /// Pending
     /// </summary>
-    Pending
+    Pending,
+
+    /// <summary>
+    /// Not required
+    /// </summary>
+    NotRequired
 }

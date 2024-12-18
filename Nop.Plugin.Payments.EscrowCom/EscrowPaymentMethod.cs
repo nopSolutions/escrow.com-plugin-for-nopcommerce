@@ -390,6 +390,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
 
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.VerificationStatus.Verified"] = "Verified",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.VerificationStatus.NotVerified"] = "Not verified",
+            ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.VerificationStatus.NotRequired"] = "Not required",
         });
 
         await base.InstallAsync();
