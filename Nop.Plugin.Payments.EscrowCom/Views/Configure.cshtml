@@ -8,27 +8,72 @@
     <div class="cards-group">
         <div class="card card-default">
             <div class="card-body">
-                <p>
-                    To configure the Escrow.com plugin for nopCommerce.<br />
-                    <br />
-                    1. Create an account or log in to the <a href="https://www.escrow-sandbox.com/" target="_blank">Sandbox</a> or <a href="https://www.escrow.com" target="_blank">Production</a> website.<br />
-                    2. Follow the "My Integrations" link in the main menu and then "API Keys" in the sidebar.<br />
-                    3. Generate a new API Key and paste it into the API key field below.<br />
-                    4. Save the configuration.<br />
-                    5. You can use this plugin once your KYC verification is approved.<br />
-                </p>
-                <p>
-                    <em>Notes:</em><br />
-                    For this plugin to work properly ensure that your primary store currency is supported by Escrow.com.<br />
-                </p>
-                <p>
-                    For the 'Motor vehicle' product type, Escrow.com requires the following specification attributes to be passed: Make, Model and Year.
-                    <br />
-                    Additionally, you can specify VIN, Odometer, Title Collection Service and Lien Payoff Service specification attributes. <b>If you use unique values ​​for the product (such as VIN and Odometer) you have to limit stock quantity of this product to 1.</b>
-                </p>
-                <p>
-                    For the 'Domain name' product type you can specify the following additional specification attributes: With Content and Domain Concierge Service.
-                </p>
+                <dl>
+                    <dt>This page allows you to configure your Escrow.com plugin for nopCommerce. To use this plugin you will need to:</dt>
+                    <dd>
+                        <ol>
+                            <li>
+                                Sign up for an account in Escrow.com’s <a href="https://www.escrow-sandbox.com/" target="_blank">Sandbox</a> (testing) or <a href="https://www.escrow.com" target="_blank">Production</a> (live) environments.
+                            </li>
+                            <li>
+                                Get your account verified by completing the <a href="https://www.escrow-sandbox.com/verify" target="_blank">Escrow.com identity verification</a> process.
+                            </li>
+                            <li>
+                                Generate an <a href="https://www.escrow-sandbox.com/" target="_blank">Escrow.com API key</a> and paste it into the API key field below
+                            </li>
+                            <li>
+                                Set up the inspection period for your transactions and specify who will pay the escrow fee. These configurations will apply to <b>ALL your transactions</b>.
+                            </li>
+                            <li>
+                                Save the configuration.
+                            </li>
+                        </ol>
+                    </dd>
+
+                    <dt>Tips before using this plugin:</dt>
+                    <dd>
+                        <ul>
+                            <li>
+                                Ensure that your currency is supported by Escrow.com. Check <a href="https://www.escrow.com/learn-more/how-escrow-payments-work/currencies" target="_blank">here</a> to view the list of currencies supported.
+                            </li>
+                            <li>
+                                Escrow.com will charge an <a href="https://www.escrow.com/fee-calculator" target="_blank">escrow fee</a> for using the platform. Determine who pays for it - either the buyer, seller, or it will be split between them.
+                            </li>
+                        </ul>
+                    </dd>
+
+                    <dt>When adding a new product in the catalog:</dt>
+                    <dd>
+                        <ul>
+                            <li>
+                                For products under ‘motor vehicle’ product type, the following specification attributes must be added:
+                                <ul>
+                                    <li>Make</li>
+                                    <li>Model</li>
+                                    <li>Year</li>
+                                    <li>VIN</li>
+                                    <li>Odometer</li>
+                                    <li>Will you be using the <a href="https://www.escrow.com/support/faqs/what-is-the-title-collection-service" target="_blank">Title Collection Service</a> for this sale?</li>
+                                    <li>Will you be using the <a href="https://www.escrow.com/support/faqs/what-is-the-lien-payoff-service" target="_blank">Lien Holder Payoff Service</a> for this sale?</li>
+                                </ul>
+                                <div class="callout">
+                                    If you use unique values for the product (such as VIN and Odometer) you have to limit the stock quantity of this product to 1.
+                                </div>
+                                <div class="callout">
+                                    Lien Holder Payoff service cannot be combined with Title Collection service.
+                                </div>
+                            </li>
+                            <li>
+                                For products under ‘domain name’ product type, the following specification attributes must be added:
+                                <ul>
+                                    <li>Is this a website with content, or just the domain name?</li>
+                                    <li>Will you be using the <a href="https://www.escrow.com/domains/domain-concierge" target="_blank">Concierge Service</a> for this sale?</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </dd>
+                </dl>
+
                 <p>
                     All required specification attributes are already created during the plugin installation.
                 </p>
@@ -46,12 +91,35 @@
                     </div>
                 }
                 <div class="form-group row">
-                    <div class="col-md-3">
-                        <nop-label asp-for="UseSandbox" />
+                    <div class="offset-md-3 col-md-9">
+                        <div style="width: 100px;">
+                            <input type="checkbox" value="true" name="@Html.NameFor(m => m.LiveMode)" class="onoffswitch-checkbox" id="@Html.IdFor(m => m.LiveMode)" checked="@Model.LiveMode" />
+                            <label class="onoffswitch-label" for="@Html.IdFor(m => m.LiveMode)">
+                                <span class="onoffswitch-inner"
+                                      data-locale-basic="@T("Plugins.Payments.EscrowCom.Fields.LiveMode.Off")"
+                                      data-locale-advanced="@T("Plugins.Payments.EscrowCom.Fields.LiveMode.On")"></span>
+                                <span class="onoffswitch-switch"></span>
+                            </label>
+                        </div>
+                        <span asp-validation-for="LiveMode"></span>
                     </div>
-                    <div class="col-md-9">
-                        <nop-editor asp-for="UseSandbox" />
-                        <span asp-validation-for="UseSandbox"></span>
+                </div>
+
+                <div class="form-group row">
+                    <div class="offset-md-3 col-md-9">
+                        <div id="config-mode" class="callout">
+                            @T(Model.LiveMode ? "Plugins.Payments.EscrowCom.Fields.LiveMode.On.Description" : "Plugins.Payments.EscrowCom.Fields.LiveMode.Off.Description")
+                        </div>
+                        <script asp-location="Footer">
+                            $(function(){
+                                var checkbox = document.getElementById('@Html.IdFor(m => m.LiveMode)');
+                                var configModeInfo = document.getElementById('config-mode');
+                                checkbox.addEventListener('change', function() {
+                                    configModeInfo.textContent = this.checked ? '@JavaScriptEncoder.Default.Encode(T("Plugins.Payments.EscrowCom.Fields.LiveMode.On.Description").Text)' :
+                                        '@JavaScriptEncoder.Default.Encode(T("Plugins.Payments.EscrowCom.Fields.LiveMode.Off.Description").Text))'
+                                });
+                            });
+                        </script>
                     </div>
                 </div>
                 <div class="form-group row">

@@ -21,9 +21,6 @@ public record ConfigurationModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.Email")]
     public string Email { get; set; }
 
-    [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.UseSandbox")]
-    public bool UseSandbox { get; set; }
-
     [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.InspectionPeriod")]
     public int InspectionPeriod { get; set; }
 
@@ -34,5 +31,6 @@ public record ConfigurationModel : BaseNopModel
     [NopResourceDisplayName("Plugins.Payments.EscrowCom.Fields.Verification")]
     public string Verification { get; set; }
 
+    public bool LiveMode { get; set; }
     public bool IsConfigured { get; set; }
 }

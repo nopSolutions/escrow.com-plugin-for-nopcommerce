@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
 using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Plugin.Payments.EscrowCom.Models;
@@ -7,6 +8,7 @@ using Nop.Services.Configuration;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
+using Nop.Services.Plugins;
 using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
@@ -82,7 +84,7 @@ public class EscrowPaymentController : BasePaymentController
         {
             Email = _escrowSettings.Email,
             ApiKey = _escrowSettings.ApiKey,
-            UseSandbox = _escrowSettings.UseSandbox,
+            LiveMode = !_escrowSettings.UseSandbox,
             FeePayer = _escrowSettings.FeePayer,
             InspectionPeriod = _escrowSettings.InspectionPeriod,
             IsConfigured = _escrowService.IsConfigured()
@@ -114,7 +116,7 @@ public class EscrowPaymentController : BasePaymentController
 
         _escrowSettings.Email = model.Email;
         _escrowSettings.ApiKey = model.ApiKey;
-        _escrowSettings.UseSandbox = model.UseSandbox;
+        _escrowSettings.UseSandbox = !model.LiveMode;
         _escrowSettings.FeePayer = model.FeePayer;
         _escrowSettings.InspectionPeriod = model.InspectionPeriod;
 

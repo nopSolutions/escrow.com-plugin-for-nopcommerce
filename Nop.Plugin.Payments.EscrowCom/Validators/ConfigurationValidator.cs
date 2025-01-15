@@ -17,12 +17,12 @@ public class ConfigurationValidator : BaseNopValidator<ConfigurationModel>
         RuleFor(model => model.ApiKey)
             .NotEmpty()
             .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.Fields.ApiKey.Required"))
-            .When(model => !model.UseSandbox);
+            .When(model => model.LiveMode);
 
         RuleFor(model => model.Email)
             .NotEmpty()
             .WithMessageAwait(localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.Fields.Email.Required"))
-            .When(model => !model.UseSandbox);
+            .When(model => model.LiveMode);
 
         RuleFor(model => model.InspectionPeriod)
             .InclusiveBetween(1, 30)
