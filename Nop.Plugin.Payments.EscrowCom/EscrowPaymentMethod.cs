@@ -164,7 +164,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             var returnUrl = urlHelper
                 .RouteUrl(EscrowDefaults.CompletedRouteName, new { orderId = postProcessPaymentRequest.Order.Id }, _webHelper.GetCurrentRequestProtocol());
 
-            redirectUrl = await _escrowService.CreateTransactionAsync(postProcessPaymentRequest.Order, returnUrl);
+            redirectUrl = await _escrowService.ConfigurePayment(postProcessPaymentRequest.Order, returnUrl);
         }
 
         //unsuccessful attempt

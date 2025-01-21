@@ -41,6 +41,11 @@ public class EscrowDefaults
     public static string EscrowItemTypeAttribute => "EscrowItemType";
 
     /// <summary>
+    /// Gets the name of the generic attribute that is used to store the Escrow transaction id
+    /// </summary>
+    public static string EscrowTransactionIdAttribute => "EscrowTransactionId";
+
+    /// <summary>
     /// Gets the names of Escrow extra attributes
     /// </summary>
     public static (string Name, Dictionary<string, string> Attributes) DomainExtraAttributes => ("Domain name specifications", new ()

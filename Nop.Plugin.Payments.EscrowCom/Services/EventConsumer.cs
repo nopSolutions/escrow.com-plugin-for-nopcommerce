@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using Nop.Core.Domain.Catalog;
+using Nop.Core.Domain.Orders;
 using Nop.Core.Events;
 using Nop.Core.Http.Extensions;
 using Nop.Plugin.Payments.EscrowCom.Domain;
@@ -14,10 +15,12 @@ namespace Nop.Plugin.Payments.EscrowCom.Services;
 /// Represents plugin event consumer
 /// </summary>
 public class EventConsumer :
-    IConsumer<EntityUpdatedEvent<Product>>
+    IConsumer<EntityUpdatedEvent<Product>>,
+    IConsumer<OrderStatusChangedEvent>
 {
     #region Fields
 
+    private readonly EscrowService _escrowService;
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IPaymentPluginManager _pluginManager;
@@ -26,10 +29,12 @@ public class EventConsumer :
 
     #region Ctor
 
-    public EventConsumer(IGenericAttributeService genericAttributeService,
+    public EventConsumer(EscrowService escrowService,
+        IGenericAttributeService genericAttributeService,
         IHttpContextAccessor httpContextAccessor,
         IPaymentPluginManager pluginManager)
     {
+        _escrowService = escrowService;
         _genericAttributeService = genericAttributeService;
         _httpContextAccessor = httpContextAccessor;
         _pluginManager = pluginManager;
@@ -54,6 +59,24 @@ public class EventConsumer :
         {
             //save attribute
             await _genericAttributeService.SaveAttributeAsync(eventMessage.Entity, EscrowDefaults.EscrowItemTypeAttribute, itemType);
+        }
+    }
+
+    /// <summary>
+    /// Handle order status changed event event
+    /// </summary>
+    /// <param name="eventMessage">Event message</param>
+    /// <returns>A task that represents the asynchronous operation</returns>
+    public async Task HandleEventAsync(OrderStatusChangedEvent eventMessage)
+    {
+        //ensure that plugin is active
+        if (!await _pluginManager.IsPluginActiveAsync(EscrowDefaults.SystemName))
+            return;
+
+        if (eventMessage.Order.OrderStatus == OrderStatus.Cancelled)
+        {
+            var existingTransaction = await _genericAttributeService.GetAttributeAsync<int>(eventMessage.Order, EscrowDefaults.EscrowTransactionIdAttribute);
+            await _escrowService.CancelTransaction(existingTransaction);
         }
     }
 }
