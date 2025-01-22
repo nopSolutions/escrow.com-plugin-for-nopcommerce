@@ -18,5 +18,5 @@ public class PendingTransaction
     /// <summary>
     /// Transaction identifier
     /// </summary>
-    public int TransaktionId { get; set; }
+    public int TransactionId { get; set; }
 }

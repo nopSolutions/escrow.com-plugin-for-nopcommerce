@@ -140,7 +140,7 @@ public class EscrowService
             if (string.IsNullOrEmpty(psa?.CustomValue) && psa?.AttributeType != SpecificationAttributeType.Option)
                 continue;
 
-            extraAttributes.Add(getAttributeName(attr.Name), 
+            extraAttributes.Add(getAttributeName(attr.Name),
                 boolOption ? (psa.CustomValue == "Yes" || psa.AttributeType == SpecificationAttributeType.Option).ToString().ToLower() : psa.CustomValue);
         }
     }
@@ -167,6 +167,8 @@ public class EscrowService
     /// Get transaction fees according to current settings 
     /// </summary>
     /// <param name="customerEmail">Buyer email</param>
+    /// <param name="itemType">Transaction item type</param>
+    /// <param name="extraAttributes">The dictionary for extra attributes</param>
     /// <returns>Array of transaction fees</returns>
     private PaymentFee[] GetFees(string customerEmail, ItemType itemType, Dictionary<string, string> extraAttributes)
     {
@@ -206,7 +208,7 @@ public class EscrowService
     /// A task that represents the asynchronous operation
     /// The task result contains the URL to which the buyer will be redirected
     /// </returns>
-    public async Task<string> ConfigurePayment(Order order, string returnUrl)
+    public async Task<string> ConfigurePaymentAsync(Order order, string returnUrl)
     {
         try
         {
@@ -220,9 +222,9 @@ public class EscrowService
             if (!Enum.TryParse(typeof(PaymentCurrency), currency.CurrencyCode, out _))
                 throw new NopException($"Currency '{currency.CurrencyCode}' not supported");
 
-            if(await _genericAttributeService.GetAttributeAsync<int>(order, EscrowDefaults.EscrowTransactionIdAttribute) > 0)
+            if (await _genericAttributeService.GetAttributeAsync<int>(order, EscrowDefaults.EscrowTransactionIdAttribute) > 0)
             {
-                var transactionLink = await GetPendingPayTransactionInfo(order.OrderGuid);
+                var transactionLink = await GetPendingPayTransactionInfoAsync(order.OrderGuid);
                 return transactionLink?.LandingPage ?? string.Empty;
             }
 
@@ -444,9 +446,9 @@ public class EscrowService
     /// A task that represents the asynchronous operation
     /// The task result contains information about pending pay transaction 
     /// </returns>
-    public async Task<PendingTransaction> GetPendingPayTransactionInfo(Guid orderGuid)
+    public async Task<PendingTransaction> GetPendingPayTransactionInfoAsync(Guid orderGuid)
     {
-        if (!IsConfigured()) 
+        if (!IsConfigured())
             return null;
 
         //execute request and get response
@@ -583,7 +585,7 @@ public class EscrowService
     /// </summary>
     /// <param name="transactionId">Transaction identifier</param>
     /// <returns>A task that represents the asynchronous operation</returns>
-    public async Task CancelTransaction(int transactionId)
+    public async Task CancelTransactionAsync(int transactionId)
     {
         try
         {

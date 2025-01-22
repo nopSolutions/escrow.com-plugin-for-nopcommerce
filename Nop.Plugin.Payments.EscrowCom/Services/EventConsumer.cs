@@ -76,7 +76,7 @@ public class EventConsumer :
         if (eventMessage.Order.OrderStatus == OrderStatus.Cancelled)
         {
             var existingTransaction = await _genericAttributeService.GetAttributeAsync<int>(eventMessage.Order, EscrowDefaults.EscrowTransactionIdAttribute);
-            await _escrowService.CancelTransaction(existingTransaction);
+            await _escrowService.CancelTransactionAsync(existingTransaction);
         }
     }
 }

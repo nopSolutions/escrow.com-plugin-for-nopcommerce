@@ -1,7 +1,7 @@
 ﻿namespace Nop.Plugin.Payments.EscrowCom.Domain;
 
 /// <summary>
-/// Represent transaction actions
+/// Represents transaction actions
 /// </summary>
 public enum TransactionActionType
 {
