@@ -9,6 +9,7 @@ using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Data;
 using Nop.Plugin.Payments.EscrowCom.Components;
+using Nop.Plugin.Payments.EscrowCom.Domain;
 using Nop.Plugin.Payments.EscrowCom.Services;
 using Nop.Services.Cms;
 using Nop.Services.Configuration;
@@ -341,7 +342,9 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             FeePayer = Domain.FeePayer.Buyer,
             UseSandbox = true,
             InspectionPeriod = 1,
-            IsApprovedAccount = false
+            IsApprovedAccount = false,
+            OrderPaidEvent = WebhookTrigger.Ship,
+            OrderCancelEvent = WebhookTrigger.Cancel
         });
 
         if (!_paymentSettings.ActivePaymentMethodSystemNames.Contains(EscrowDefaults.SystemName))

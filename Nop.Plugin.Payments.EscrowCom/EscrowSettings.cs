@@ -52,4 +52,14 @@ public class EscrowSettings : ISettings
     /// Gets or sets a value indicating whether the linked account is approved
     /// </summary>
     public bool IsApprovedAccount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name os webhook event that will be used to mark an order as paid
+    /// </summary>
+    public WebhookTrigger OrderPaidEvent { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name os webhook event that will be used to cancel order
+    /// </summary>
+    public WebhookTrigger OrderCancelEvent { get; set; }
 }

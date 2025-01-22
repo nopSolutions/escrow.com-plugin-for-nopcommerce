@@ -540,36 +540,45 @@ public class EscrowService
 
             var order = await _orderService.GetOrderByGuidAsync(orderGuid);
 
-            var note = string.Empty;
-
-            switch (eventResult.Event)
+            var note = eventResult.Event switch
             {
-                case WebhookTrigger.PaymentApproved:
-                    if (_orderProcessingService.CanMarkOrderAsPaid(order))
-                        await _orderProcessingService.MarkOrderAsPaidAsync(order);
-                    note = "Escrow.com has approved the payment for the transaction and the goods may now be shipped by the seller.";
-                    break;
-                case WebhookTrigger.PaymentSent:
-                    if (_orderProcessingService.CanMarkOrderAsPaid(order))
-                        await _orderProcessingService.MarkOrderAsPaidAsync(order);
-                    note = "The buyer has sent payment to Escrow.com";
-                    break;
-                case WebhookTrigger.PaymentRejected:
-                    if (_orderProcessingService.CanCancelOrder(order))
-                        await _orderProcessingService.CancelOrderAsync(order, true);
-                    note = "Escrow.com has rejected the payment for the transaction.";
-                    break;
-                case WebhookTrigger.PaymentReceived:
-                    if (_orderProcessingService.CanMarkOrderAsAuthorized(order))
-                        await _orderProcessingService.MarkAsAuthorizedAsync(order);
-                    note = "Escrow.com has received payment from the buyer.";
-                    break;
-            }
+                WebhookTrigger.PaymentApproved => "Escrow.com has approved the payment for the transaction and the goods may now be shipped by the seller.",
+                WebhookTrigger.Create => "A new transaction has been created.",
+                WebhookTrigger.Agree => "All parties have agreed to the transaction.",
+                WebhookTrigger.PartyVerificationSubmitted => "A party has submitted their verification for review.",
+                WebhookTrigger.PartyVerificationRejected => "A party has had their verification reviewed and rejected.",
+                WebhookTrigger.PartyVerificationApproved => "A party has had their verification reviewed and approved.",
+                WebhookTrigger.PaymentRejected => "Escrow.com has rejected the payment for the transaction.",
+                WebhookTrigger.PaymentSent => "The buyer has sent payment to Escrow.com.",
+                WebhookTrigger.PaymentReceived => "Escrow.com has received payment from the buyer.",
+                WebhookTrigger.PaymentRefunded => "Escrow.com has refunded a buyer's payment.",
+                WebhookTrigger.PaymentDisbursed => "Escrow.com has disbursed payment to the seller.",
+                WebhookTrigger.Ship => "The seller has indicated that the goods have been shipped.",
+                WebhookTrigger.Receive => "The buyer has indicated that the goods have been received.",
+                WebhookTrigger.Accept => "The buyer has indicated that the goods have been accepted.",
+                WebhookTrigger.Reject => "The buyer has indicated that the goods have been rejected.",
+                WebhookTrigger.ShipReturn => "The buyer has indicated that the goods to be returned following rejection have been shipped.",
+                WebhookTrigger.ReceiveReturn => "The seller has indicated that the goods to be returned following rejection have been received.",
+                WebhookTrigger.AcceptReturn => "The seller has indicated that the goods to be returned following rejection have been accepted.",
+                WebhookTrigger.RejectReturn => "The seller has indicated that the goods to be returned following rejection have been rejected.",
+                WebhookTrigger.Complete => "All disbursements have been made to the seller, closing statements have been sent. Escrow.com marked the transaction as complete.",
+                WebhookTrigger.Cancel => "Escrow.com has marked the payment as cancelled.",
+                WebhookTrigger.OfferAccepted => "This is sent for Escrow Offer transactions, when an offer has been accepted.",
+                WebhookTrigger.RefundResolved => "This is sent when Escrow.com has approved to process a refund for a transaction.",
+                WebhookTrigger.RefundRejected => "This is sent when Escrow.com has rejected to process a refund for the transaction.",
+                _ => $"{eventResult.Event} webhook has been fired",
+            };
+
+            if (eventResult.Event == _escrowSettings.OrderPaidEvent && _orderProcessingService.CanMarkOrderAsPaid(order))
+                await _orderProcessingService.MarkOrderAsPaidAsync(order);
+
+            if (eventResult.Event == _escrowSettings.OrderCancelEvent && _orderProcessingService.CanCancelOrder(order))
+                await _orderProcessingService.CancelOrderAsync(order, true);
 
             await _orderService.InsertOrderNoteAsync(new OrderNote
             {
                 OrderId = order.Id,
-                Note = note,
+                Note = $"Escrow.com: {note}",
                 DisplayToCustomer = false,
                 CreatedOnUtc = DateTime.UtcNow,
             });
