@@ -362,6 +362,7 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
         await _localizationService.AddOrUpdateLocaleResourceAsync(new Dictionary<string, string>
         {
             ["Plugins.Payments.EscrowCom"] = "Escrow.com",
+            ["Plugins.Payments.EscrowCom.About"] = "About the Escrow.com Plugin",
             ["Plugins.Payments.EscrowCom.AccountConfiguration.Failed"] = "Plugin configuration failed (see details in the <a href=\"{0}\" target=\"_blank\">log</a>)",
             ["Plugins.Payments.EscrowCom.Currency.Warning"] = "The <a href=\"{1}\" target=\"_blank\">primary store currency</a> ({0}) is not supported by Escrow.com. Currently the only currencies that are supported are USD, EUR, AUD, GBP, CAD.",
             ["Plugins.Payments.EscrowCom.Fields.ApiKey"] = "API key",
@@ -384,6 +385,8 @@ public class EscrowPaymentMethod : BasePlugin, IPaymentMethod, IWidgetPlugin
             ["Plugins.Payments.EscrowCom.ItemType"] = "Escrow item type",
             ["Plugins.Payments.EscrowCom.ItemType.Hint"] = "The item type - can affect behaviour of the transaction and can also be used to specify party-specific fees.",
             ["Plugins.Payments.EscrowCom.PaymentMethodDescription"] = "You will be redirected to Escrow.com to complete the order.",
+            ["Plugins.Payments.EscrowCom.Setup"] = "Account Setup",
+            ["Plugins.Payments.EscrowCom.Transaction.DescriptionTemplate"] = "{0}: Order #{1}",
 
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.FeePayer.Buyer"] = "Buyer",
             ["Enums.Nop.Plugin.Payments.EscrowCom.Domain.FeePayer.Seller"] = "Seller",

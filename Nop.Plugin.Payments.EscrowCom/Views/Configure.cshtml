@@ -7,6 +7,9 @@
 <form asp-controller="EscrowPayment" asp-action="Configure" method="post">
     <div class="cards-group">
         <div class="card card-default">
+            <div class="card-header with-border clearfix">
+                <div class="card-title"><i class="fas fa-info"></i><span>@T("Plugins.Payments.EscrowCom.About")</span></div>
+            </div>
             <div class="card-body">
                 <dl>
                     <dt>This page allows you to configure your Escrow.com plugin for nopCommerce. To use this plugin you will need to:</dt>
@@ -73,10 +76,16 @@
                         </ul>
                     </dd>
                 </dl>
-
                 <p>
                     All required specification attributes are already created during the plugin installation.
                 </p>
+            </div>
+        </div>
+        <div class="card card-default">
+            <div class="card-header with-border clearfix">
+                <div class="card-title"><i class="fas fa-cog"></i><span>@T("Plugins.Payments.EscrowCom.Setup")</span></div>
+            </div>
+            <div class="card-body">
                 @if (Model.IsConfigured)
                 {
                     <div class="form-group row">

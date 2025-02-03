@@ -16,6 +16,7 @@ using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
+using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Media;
 using Nop.Services.Orders;
@@ -46,6 +47,7 @@ public class EscrowService
     private readonly ICurrencyService _currencyService;
     private readonly IGenericAttributeService _genericAttributeService;
     private readonly ILogger _logger;
+    private readonly ILocalizationService _localizationService;
     private readonly INopUrlHelper _nopUrlHelper;
     private readonly IOrderProcessingService _orderProcessingService;
     private readonly IOrderService _orderService;
@@ -70,6 +72,7 @@ public class EscrowService
         ICurrencyService currencyService,
         IGenericAttributeService genericAttributeService,
         ILogger logger,
+        ILocalizationService localizationService,
         INopUrlHelper nopUrlHelper,
         IOrderProcessingService orderProcessingService,
         IOrderService orderService,
@@ -90,6 +93,7 @@ public class EscrowService
         _currencyService = currencyService;
         _genericAttributeService = genericAttributeService;
         _logger = logger;
+        _localizationService = localizationService;
         _nopUrlHelper = nopUrlHelper;
         _orderProcessingService = orderProcessingService;
         _orderService = orderService;
@@ -288,11 +292,13 @@ public class EscrowService
                 });
             }
 
+            var transactionDescription = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.Transaction.DescriptionTemplate"), store.Name, order.OrderGuid);
+
             //prepare request parameters
             var request = new PaymentRequest
             {
                 Currency = currency.CurrencyCode.ToLower(),
-                Description = CommonHelper.EnsureMaximumLength($"Transaction for order #{order.OrderGuid} in '{store.Name}'", 256),
+                Description = CommonHelper.EnsureMaximumLength(transactionDescription, 256),
                 Reference = order.OrderGuid.ToString(),
                 ReturnUrl = returnUrl,
                 Items = paymentItems.ToArray(),
