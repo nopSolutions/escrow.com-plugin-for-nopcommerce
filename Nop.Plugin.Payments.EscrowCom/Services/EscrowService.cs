@@ -46,8 +46,8 @@ public class EscrowService
     private readonly IAddressService _addressService;
     private readonly ICurrencyService _currencyService;
     private readonly IGenericAttributeService _genericAttributeService;
-    private readonly ILogger _logger;
     private readonly ILocalizationService _localizationService;
+    private readonly ILogger _logger;
     private readonly INopUrlHelper _nopUrlHelper;
     private readonly IOrderProcessingService _orderProcessingService;
     private readonly IOrderService _orderService;
@@ -71,8 +71,8 @@ public class EscrowService
         IAddressService addressService,
         ICurrencyService currencyService,
         IGenericAttributeService genericAttributeService,
-        ILogger logger,
         ILocalizationService localizationService,
+        ILogger logger,
         INopUrlHelper nopUrlHelper,
         IOrderProcessingService orderProcessingService,
         IOrderService orderService,
@@ -92,8 +92,8 @@ public class EscrowService
         _addressService = addressService;
         _currencyService = currencyService;
         _genericAttributeService = genericAttributeService;
-        _logger = logger;
         _localizationService = localizationService;
+        _logger = logger;
         _nopUrlHelper = nopUrlHelper;
         _orderProcessingService = orderProcessingService;
         _orderService = orderService;
@@ -292,7 +292,8 @@ public class EscrowService
                 });
             }
 
-            var transactionDescription = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.EscrowCom.Transaction.DescriptionTemplate"), store.Name, order.OrderGuid);
+            var transactionDescription = string.Format(await _localizationService
+                .GetResourceAsync("Plugins.Payments.EscrowCom.Transaction.DescriptionTemplate"), store.Name, order.CustomOrderNumber);
 
             //prepare request parameters
             var request = new PaymentRequest
